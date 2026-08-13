@@ -28,6 +28,26 @@
 
 ---
 
+## `secretDataHash`
+
+### Happy Path — secretDataHash
+
+| Test ID | Category | Description | Setup | Input | Expected |
+|---|---|---|---|---|---|
+| `TestSecretDataHash_DeterministicOutput` | `unit` | Same map always produces the same hash string. | | A fixed `map[string][]byte{"key": []byte("val")}` passed twice | Both calls return identical 32-character hex strings |
+| `TestSecretDataHash_Returns32HexChars` | `unit` | Output is exactly 32 hex characters. | | `map[string][]byte{"k": []byte("v")}` | Returned string matches regexp `^[0-9a-f]{32}$` |
+| `TestSecretDataHash_DifferentDataProducesDifferentHashes` | `unit` | Different map contents produce different hashes. | | Two maps with differing values | Returned hash strings differ |
+| `TestSecretDataHash_OrderIndependent` | `unit` | Result is independent of Go map iteration order. | | Two maps with identical key-value pairs constructed in different insertion orders: `{"a": []byte("1"), "b": []byte("2")}` and `{"b": []byte("2"), "a": []byte("1")}` | Both calls return the same hash string |
+
+### Null / Empty Input
+
+| Test ID | Category | Description | Setup | Input | Expected |
+|---|---|---|---|---|---|
+| `TestSecretDataHash_NilMap` | `unit` | Returns deterministic hash for nil input. | | `nil` | Returns a valid 32-character hex string (SHA-256 of empty byte slice); does not panic |
+| `TestSecretDataHash_EmptyMap` | `unit` | Returns same hash as nil for empty map. | | `map[string][]byte{}` | Returns the same hash as `nil` input |
+
+---
+
 ## `standardLabels`
 
 ### Happy Path — standardLabels
