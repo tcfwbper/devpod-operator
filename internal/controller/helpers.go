@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,6 +21,27 @@ func specHash(spec interface{}) (string, error) {
 	}
 	sum := sha256.Sum256(data)
 	return fmt.Sprintf("%x", sum)[:32], nil
+}
+
+// secretDataHash computes a deterministic hash of a Kubernetes Secret's .Data
+// field. Keys are sorted lexicographically before hashing to ensure the result
+// is independent of Go map iteration order. Returns the first 32 hex characters
+// of the SHA-256 hash.
+func secretDataHash(data map[string][]byte) string {
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var buf []byte
+	for _, k := range keys {
+		buf = append(buf, []byte(k)...)
+		buf = append(buf, data[k]...)
+	}
+
+	sum := sha256.Sum256(buf)
+	return fmt.Sprintf("%x", sum)[:32]
 }
 
 // standardLabels returns the full set of labels applied to all resources owned

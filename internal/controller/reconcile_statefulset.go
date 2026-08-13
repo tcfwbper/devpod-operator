@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	kappsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -12,13 +13,23 @@ import (
 	appsv1 "github.com/tcfwbper/devpod-operator/api/v1"
 )
 
+const secretHashAnnotation = "apps.devpod.com/secret-hash"
+
 // reconcileStatefulSet ensures an owned StatefulSet exists for the DevPod and
 // keeps its mutable fields in sync with the desired state.
-func (r *DevPodReconciler) reconcileStatefulSet(ctx context.Context, dp *appsv1.DevPod) (*kappsv1.StatefulSet, error) {
+func (r *DevPodReconciler) reconcileStatefulSet(ctx context.Context, dp *appsv1.DevPod, secret *corev1.Secret) (*kappsv1.StatefulSet, error) {
 	// Build desired StatefulSet
 	desired := buildStatefulSet(dp)
 
-	// Compute spec-hash
+	// Inject secret-hash into pod template annotations before computing spec-hash.
+	// This ensures that when Secret content changes, the pod template changes,
+	// causing Kubernetes to roll the pods.
+	if desired.Spec.Template.ObjectMeta.Annotations == nil {
+		desired.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	}
+	desired.Spec.Template.ObjectMeta.Annotations[secretHashAnnotation] = secretDataHash(secret.Data)
+
+	// Compute spec-hash (now captures secret hash via template annotations)
 	hash, err := specHash(desired.Spec)
 	if err != nil {
 		return nil, fmt.Errorf("computing StatefulSet spec hash: %w", err)

@@ -120,7 +120,7 @@ func (r *DevPodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	dp.Status.SSHNodePort = sshNodePort(svc)
 
 	// 9. Reconcile StatefulSet
-	sts, err := r.reconcileStatefulSet(ctx, dp)
+	sts, err := r.reconcileStatefulSet(ctx, dp, secret)
 	if err != nil {
 		log.Error(err, "reconciling StatefulSet")
 		return r.degraded(ctx, dp, appsv1.ReasonReconcileError, "failed to reconcile StatefulSet", err)
