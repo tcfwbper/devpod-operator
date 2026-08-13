@@ -66,6 +66,77 @@ func TestSpecHash_MarshalError(t *testing.T) {
 }
 
 // =============================================================================
+// secretDataHash
+// =============================================================================
+
+func TestSecretDataHash_DeterministicOutput(t *testing.T) {
+	// blocked: secretDataHash not yet implemented in helpers.go
+	t.Skip("blocked: secretDataHash function not yet defined in helpers.go")
+
+	// Enable when secretDataHash is implemented:
+	// data := map[string][]byte{"key": []byte("val")}
+	// hash1 := secretDataHash(data)
+	// hash2 := secretDataHash(data)
+	// assert.Equal(t, hash1, hash2, "same input must produce same hash")
+	// assert.Len(t, hash1, 32, "hash should be 32 hex characters")
+}
+
+func TestSecretDataHash_Returns32HexChars(t *testing.T) {
+	// blocked: secretDataHash not yet implemented in helpers.go
+	t.Skip("blocked: secretDataHash function not yet defined in helpers.go")
+
+	// Enable when secretDataHash is implemented:
+	// data := map[string][]byte{"k": []byte("v")}
+	// hash := secretDataHash(data)
+	// matched := regexp.MustCompile(`^[0-9a-f]{32}$`).MatchString(hash)
+	// assert.True(t, matched, "hash %q should match ^[0-9a-f]{32}$", hash)
+}
+
+func TestSecretDataHash_DifferentDataProducesDifferentHashes(t *testing.T) {
+	// blocked: secretDataHash not yet implemented in helpers.go
+	t.Skip("blocked: secretDataHash function not yet defined in helpers.go")
+
+	// Enable when secretDataHash is implemented:
+	// data1 := map[string][]byte{"key": []byte("value1")}
+	// data2 := map[string][]byte{"key": []byte("value2")}
+	// hash1 := secretDataHash(data1)
+	// hash2 := secretDataHash(data2)
+	// assert.NotEqual(t, hash1, hash2, "different data must produce different hashes")
+}
+
+func TestSecretDataHash_OrderIndependent(t *testing.T) {
+	// blocked: secretDataHash not yet implemented in helpers.go
+	t.Skip("blocked: secretDataHash function not yet defined in helpers.go")
+
+	// Enable when secretDataHash is implemented:
+	// data1 := map[string][]byte{"a": []byte("1"), "b": []byte("2")}
+	// data2 := map[string][]byte{"b": []byte("2"), "a": []byte("1")}
+	// hash1 := secretDataHash(data1)
+	// hash2 := secretDataHash(data2)
+	// assert.Equal(t, hash1, hash2, "hash must be independent of map iteration order")
+}
+
+func TestSecretDataHash_NilMap(t *testing.T) {
+	// blocked: secretDataHash not yet implemented in helpers.go
+	t.Skip("blocked: secretDataHash function not yet defined in helpers.go")
+
+	// Enable when secretDataHash is implemented:
+	// hash := secretDataHash(nil)
+	// matched := regexp.MustCompile(`^[0-9a-f]{32}$`).MatchString(hash)
+	// assert.True(t, matched, "nil input should return a valid 32-char hex string, got %q", hash)
+}
+
+func TestSecretDataHash_EmptyMap(t *testing.T) {
+	// blocked: secretDataHash not yet implemented in helpers.go
+	t.Skip("blocked: secretDataHash function not yet defined in helpers.go")
+
+	// Enable when secretDataHash is implemented:
+	// hashNil := secretDataHash(nil)
+	// hashEmpty := secretDataHash(map[string][]byte{})
+	// assert.Equal(t, hashNil, hashEmpty, "nil and empty map should produce the same hash")
+}
+
+// =============================================================================
 // standardLabels
 // =============================================================================
 

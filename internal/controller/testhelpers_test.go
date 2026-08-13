@@ -182,6 +182,19 @@ func newPasswordSecret(name, namespace, password string) *corev1.Secret {
 	}
 }
 
+// newSecretWithData creates a Secret with arbitrary .Data for testing
+// secretDataHash and reconcileStatefulSet secret-hash injection.
+func newSecretWithData(name, namespace string, data map[string][]byte) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: data,
+	}
+}
+
 // --------------------------------------------------------------------------
 // Fake client helpers
 // --------------------------------------------------------------------------
