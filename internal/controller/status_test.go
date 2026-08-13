@@ -20,10 +20,7 @@ import (
 // conditionSet — Construction
 // =============================================================================
 
-// scaffolded: awaiting conditionSet from internal/controller/status.go
-
 func TestConditionSet_MutualExclusion(t *testing.T) {
-	t.Skip("scaffolded: awaiting conditionSet from status.go")
 
 	// Verify that constructing a conditionSet enforces mutual exclusion:
 	// only one of ready/progressing/degraded can be true
@@ -43,10 +40,7 @@ func TestConditionSet_MutualExclusion(t *testing.T) {
 // setConditions
 // =============================================================================
 
-// scaffolded: awaiting setConditions from internal/controller/status.go
-
 func TestSetConditions_SetsAllThreeTypes(t *testing.T) {
-	t.Skip("scaffolded: awaiting setConditions from status.go")
 
 	dp := newDevPod("dev1", "ns").withGeneration(3).build()
 	cs := conditionSet{
@@ -81,7 +75,6 @@ func TestSetConditions_SetsAllThreeTypes(t *testing.T) {
 }
 
 func TestSetConditions_OverwritesPreviousConditions(t *testing.T) {
-	t.Skip("scaffolded: awaiting setConditions from status.go")
 
 	dp := newDevPod("dev1", "ns").withGeneration(2).build()
 	// Set initial conditions
@@ -112,10 +105,7 @@ func TestSetConditions_OverwritesPreviousConditions(t *testing.T) {
 // updateStatus
 // =============================================================================
 
-// scaffolded: awaiting updateStatus from internal/controller/status.go
-
 func TestUpdateStatus_SetsObservedGeneration(t *testing.T) {
-	t.Skip("scaffolded: awaiting updateStatus from status.go")
 
 	dp := newDevPod("dev1", "ns").withGeneration(5).withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -127,7 +117,6 @@ func TestUpdateStatus_SetsObservedGeneration(t *testing.T) {
 }
 
 func TestUpdateStatus_ReturnsError(t *testing.T) {
-	t.Skip("scaffolded: awaiting updateStatus from status.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
@@ -145,10 +134,7 @@ func TestUpdateStatus_ReturnsError(t *testing.T) {
 // ready
 // =============================================================================
 
-// scaffolded: awaiting ready from internal/controller/status.go
-
 func TestReady_SetsCorrectConditions(t *testing.T) {
-	t.Skip("scaffolded: awaiting ready from status.go")
 
 	dp := newDevPod("dev1", "ns").withGeneration(3).withFinalizer().build()
 	dp.Status.SSHNodePort = 30022
@@ -176,7 +162,6 @@ func TestReady_SetsCorrectConditions(t *testing.T) {
 }
 
 func TestReady_ReturnsNoRequeue(t *testing.T) {
-	t.Skip("scaffolded: awaiting ready from status.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	dp.Status.SSHNodePort = 30022
@@ -190,7 +175,6 @@ func TestReady_ReturnsNoRequeue(t *testing.T) {
 }
 
 func TestReady_StatusUpdateError(t *testing.T) {
-	t.Skip("scaffolded: awaiting ready from status.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	dp.Status.SSHNodePort = 30022
@@ -209,10 +193,7 @@ func TestReady_StatusUpdateError(t *testing.T) {
 // progressing
 // =============================================================================
 
-// scaffolded: awaiting progressing from internal/controller/status.go
-
 func TestProgressing_SetsCorrectConditions(t *testing.T) {
-	t.Skip("scaffolded: awaiting progressing from status.go")
 
 	dp := newDevPod("dev1", "ns").withGeneration(2).withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -236,7 +217,6 @@ func TestProgressing_SetsCorrectConditions(t *testing.T) {
 }
 
 func TestProgressing_RequeuesAfterInterval(t *testing.T) {
-	t.Skip("scaffolded: awaiting progressing from status.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -248,7 +228,6 @@ func TestProgressing_RequeuesAfterInterval(t *testing.T) {
 }
 
 func TestProgressing_StatusUpdateError(t *testing.T) {
-	t.Skip("scaffolded: awaiting progressing from status.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
@@ -266,10 +245,7 @@ func TestProgressing_StatusUpdateError(t *testing.T) {
 // pending
 // =============================================================================
 
-// scaffolded: awaiting pending from internal/controller/status.go
-
 func TestPending_SetsAllConditionsFalse(t *testing.T) {
-	t.Skip("scaffolded: awaiting pending from status.go")
 
 	dp := newDevPod("dev1", "ns").withGeneration(1).withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -287,7 +263,6 @@ func TestPending_SetsAllConditionsFalse(t *testing.T) {
 }
 
 func TestPending_ReturnsNoRequeue(t *testing.T) {
-	t.Skip("scaffolded: awaiting pending from status.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -300,7 +275,6 @@ func TestPending_ReturnsNoRequeue(t *testing.T) {
 }
 
 func TestPending_StatusUpdateError(t *testing.T) {
-	t.Skip("scaffolded: awaiting pending from status.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
@@ -318,10 +292,7 @@ func TestPending_StatusUpdateError(t *testing.T) {
 // degraded
 // =============================================================================
 
-// scaffolded: awaiting degraded from internal/controller/status.go
-
 func TestDegraded_WithCause_SetsConditionsAndReturnsError(t *testing.T) {
-	t.Skip("scaffolded: awaiting degraded from status.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -343,7 +314,6 @@ func TestDegraded_WithCause_SetsConditionsAndReturnsError(t *testing.T) {
 }
 
 func TestDegraded_NilCause_RequeuesAfterInterval(t *testing.T) {
-	t.Skip("scaffolded: awaiting degraded from status.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -361,7 +331,6 @@ func TestDegraded_NilCause_RequeuesAfterInterval(t *testing.T) {
 }
 
 func TestDegraded_StatusUpdateError(t *testing.T) {
-	t.Skip("scaffolded: awaiting degraded from status.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	cause := errors.New("original")

@@ -16,10 +16,7 @@ import (
 // specHash
 // =============================================================================
 
-// scaffolded: awaiting specHash from internal/controller/helpers.go
-
 func TestSpecHash_DeterministicOutput(t *testing.T) {
-	t.Skip("scaffolded: awaiting specHash from helpers.go")
 
 	input := struct {
 		Name string
@@ -37,7 +34,6 @@ func TestSpecHash_DeterministicOutput(t *testing.T) {
 }
 
 func TestSpecHash_DifferentInputsProduceDifferentHashes(t *testing.T) {
-	t.Skip("scaffolded: awaiting specHash from helpers.go")
 
 	input1 := struct{ Name string }{Name: "alpha"}
 	input2 := struct{ Name string }{Name: "beta"}
@@ -52,7 +48,6 @@ func TestSpecHash_DifferentInputsProduceDifferentHashes(t *testing.T) {
 }
 
 func TestSpecHash_Returns32HexChars(t *testing.T) {
-	t.Skip("scaffolded: awaiting specHash from helpers.go")
 
 	input := struct{ Value int }{Value: 42}
 	hash, err := specHash(input)
@@ -63,7 +58,6 @@ func TestSpecHash_Returns32HexChars(t *testing.T) {
 }
 
 func TestSpecHash_MarshalError(t *testing.T) {
-	t.Skip("scaffolded: awaiting specHash from helpers.go")
 
 	// Channels cannot be JSON-marshaled
 	input := make(chan int)
@@ -75,10 +69,7 @@ func TestSpecHash_MarshalError(t *testing.T) {
 // standardLabels
 // =============================================================================
 
-// scaffolded: awaiting standardLabels from internal/controller/helpers.go
-
 func TestStandardLabels_ContainsExpectedKeys(t *testing.T) {
-	t.Skip("scaffolded: awaiting standardLabels from helpers.go")
 
 	dp := &appsv1.DevPod{
 		ObjectMeta: metav1.ObjectMeta{Name: "my-pod"},
@@ -91,7 +82,6 @@ func TestStandardLabels_ContainsExpectedKeys(t *testing.T) {
 }
 
 func TestStandardLabels_ReturnsNewMapEachCall(t *testing.T) {
-	t.Skip("scaffolded: awaiting standardLabels from helpers.go")
 
 	dp := &appsv1.DevPod{
 		ObjectMeta: metav1.ObjectMeta{Name: "my-pod"},
@@ -111,10 +101,7 @@ func TestStandardLabels_ReturnsNewMapEachCall(t *testing.T) {
 // selectorLabels
 // =============================================================================
 
-// scaffolded: awaiting selectorLabels from internal/controller/helpers.go
-
 func TestSelectorLabels_ContainsSubsetOfStandard(t *testing.T) {
-	t.Skip("scaffolded: awaiting selectorLabels from helpers.go")
 
 	dp := &appsv1.DevPod{
 		ObjectMeta: metav1.ObjectMeta{Name: "my-pod"},
@@ -128,7 +115,6 @@ func TestSelectorLabels_ContainsSubsetOfStandard(t *testing.T) {
 }
 
 func TestSelectorLabels_ReturnsNewMapEachCall(t *testing.T) {
-	t.Skip("scaffolded: awaiting selectorLabels from helpers.go")
 
 	dp := &appsv1.DevPod{
 		ObjectMeta: metav1.ObjectMeta{Name: "my-pod"},
@@ -146,10 +132,7 @@ func TestSelectorLabels_ReturnsNewMapEachCall(t *testing.T) {
 // setAnnotation
 // =============================================================================
 
-// scaffolded: awaiting setAnnotation from internal/controller/helpers.go
-
 func TestSetAnnotation_AddsAnnotation(t *testing.T) {
-	t.Skip("scaffolded: awaiting setAnnotation from helpers.go")
 
 	obj := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -163,7 +146,6 @@ func TestSetAnnotation_AddsAnnotation(t *testing.T) {
 }
 
 func TestSetAnnotation_OverwritesExistingKey(t *testing.T) {
-	t.Skip("scaffolded: awaiting setAnnotation from helpers.go")
 
 	obj := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -176,7 +158,6 @@ func TestSetAnnotation_OverwritesExistingKey(t *testing.T) {
 }
 
 func TestSetAnnotation_NilAnnotationsMap(t *testing.T) {
-	t.Skip("scaffolded: awaiting setAnnotation from helpers.go")
 
 	obj := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{},
@@ -191,28 +172,22 @@ func TestSetAnnotation_NilAnnotationsMap(t *testing.T) {
 // portName
 // =============================================================================
 
-// scaffolded: awaiting portName from internal/controller/helpers.go
-
 func TestPortName_SSH(t *testing.T) {
-	t.Skip("scaffolded: awaiting portName from helpers.go")
 
 	assert.Equal(t, "ssh", portName(22))
 }
 
 func TestPortName_NonSSH(t *testing.T) {
-	t.Skip("scaffolded: awaiting portName from helpers.go")
 
 	assert.Equal(t, "port-8080", portName(8080))
 }
 
 func TestPortName_Zero(t *testing.T) {
-	t.Skip("scaffolded: awaiting portName from helpers.go")
 
 	assert.Equal(t, "port-0", portName(0))
 }
 
 func TestPortName_MaxPort(t *testing.T) {
-	t.Skip("scaffolded: awaiting portName from helpers.go")
 
 	assert.Equal(t, "port-65535", portName(65535))
 }
@@ -221,10 +196,7 @@ func TestPortName_MaxPort(t *testing.T) {
 // sshNodePort
 // =============================================================================
 
-// scaffolded: awaiting sshNodePort from internal/controller/helpers.go
-
 func TestSSHNodePort_Found(t *testing.T) {
-	t.Skip("scaffolded: awaiting sshNodePort from helpers.go")
 
 	svc := &corev1.Service{
 		Spec: corev1.ServiceSpec{
@@ -238,7 +210,6 @@ func TestSSHNodePort_Found(t *testing.T) {
 }
 
 func TestSSHNodePort_NoPort22(t *testing.T) {
-	t.Skip("scaffolded: awaiting sshNodePort from helpers.go")
 
 	svc := &corev1.Service{
 		Spec: corev1.ServiceSpec{
@@ -251,7 +222,6 @@ func TestSSHNodePort_NoPort22(t *testing.T) {
 }
 
 func TestSSHNodePort_EmptyPorts(t *testing.T) {
-	t.Skip("scaffolded: awaiting sshNodePort from helpers.go")
 
 	svc := &corev1.Service{
 		Spec: corev1.ServiceSpec{

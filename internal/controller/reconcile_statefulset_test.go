@@ -20,11 +20,7 @@ import (
 // reconcileStatefulSet — Happy Path
 // =============================================================================
 
-// scaffolded: awaiting reconcileStatefulSet from internal/controller/reconcile_statefulset.go
-// scaffolded: awaiting buildStatefulSet from internal/controller/build_statefulset.go
-
 func TestReconcileStatefulSet_CreatesWhenNotFound(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileStatefulSet from reconcile_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -48,7 +44,6 @@ func TestReconcileStatefulSet_CreatesWhenNotFound(t *testing.T) {
 }
 
 func TestReconcileStatefulSet_NoOpWhenHashMatches(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileStatefulSet, specHash from reconcile_statefulset.go, helpers.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 
@@ -74,7 +69,6 @@ func TestReconcileStatefulSet_NoOpWhenHashMatches(t *testing.T) {
 }
 
 func TestReconcileStatefulSet_UpdatesMutableFieldsOnHashMismatch(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileStatefulSet, buildStatefulSet from reconcile_statefulset.go, build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").
 		withImage("new-image:v2").
@@ -114,7 +108,6 @@ func TestReconcileStatefulSet_UpdatesMutableFieldsOnHashMismatch(t *testing.T) {
 }
 
 func TestReconcileStatefulSet_DoesNotModifyImmutableFields(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileStatefulSet from reconcile_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 
@@ -154,7 +147,6 @@ func TestReconcileStatefulSet_DoesNotModifyImmutableFields(t *testing.T) {
 // =============================================================================
 
 func TestReconcileStatefulSet_NilAnnotations(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileStatefulSet from reconcile_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	existingSts := &kappsv1.StatefulSet{
@@ -181,7 +173,6 @@ func TestReconcileStatefulSet_NilAnnotations(t *testing.T) {
 // =============================================================================
 
 func TestReconcileStatefulSet_GetError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileStatefulSet from reconcile_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
@@ -200,7 +191,6 @@ func TestReconcileStatefulSet_GetError(t *testing.T) {
 }
 
 func TestReconcileStatefulSet_CreateError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileStatefulSet from reconcile_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
@@ -225,7 +215,6 @@ func TestReconcileStatefulSet_CreateError(t *testing.T) {
 }
 
 func TestReconcileStatefulSet_UpdateError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileStatefulSet from reconcile_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	existingSts := &kappsv1.StatefulSet{
@@ -258,7 +247,6 @@ func TestReconcileStatefulSet_UpdateError(t *testing.T) {
 // =============================================================================
 
 func TestReconcileStatefulSet_SetsOwnerReference(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileStatefulSet from reconcile_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -275,7 +263,6 @@ func TestReconcileStatefulSet_SetsOwnerReference(t *testing.T) {
 }
 
 func TestReconcileStatefulSet_CallsBuildStatefulSet(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileStatefulSet, buildStatefulSet from reconcile_statefulset.go, build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := fakeClientWith(t, dp)

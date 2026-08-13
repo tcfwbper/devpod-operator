@@ -20,10 +20,7 @@ import (
 // reconcileSecret — Happy Path
 // =============================================================================
 
-// scaffolded: awaiting reconcileSecret from internal/controller/reconcile_secret.go
-
 func TestReconcileSecret_CreatesWhenNotFound(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileSecret from reconcile_secret.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -50,7 +47,6 @@ func TestReconcileSecret_CreatesWhenNotFound(t *testing.T) {
 }
 
 func TestReconcileSecret_ReturnsExistingUnchanged(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileSecret from reconcile_secret.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	existingSecret := &corev1.Secret{
@@ -75,7 +71,6 @@ func TestReconcileSecret_ReturnsExistingUnchanged(t *testing.T) {
 }
 
 func TestReconcileSecret_RestoresKeyWhenMissing(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileSecret from reconcile_secret.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	existingSecret := &corev1.Secret{
@@ -104,7 +99,6 @@ func TestReconcileSecret_RestoresKeyWhenMissing(t *testing.T) {
 // =============================================================================
 
 func TestReconcileSecret_NilDataMap(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileSecret from reconcile_secret.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	existingSecret := &corev1.Secret{
@@ -126,7 +120,6 @@ func TestReconcileSecret_NilDataMap(t *testing.T) {
 }
 
 func TestReconcileSecret_EmptyPasswordNotOverwritten(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileSecret from reconcile_secret.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	existingSecret := &corev1.Secret{
@@ -153,7 +146,6 @@ func TestReconcileSecret_EmptyPasswordNotOverwritten(t *testing.T) {
 // =============================================================================
 
 func TestReconcileSecret_GetError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileSecret from reconcile_secret.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	errGet := errors.New("api unavailable")
@@ -173,7 +165,6 @@ func TestReconcileSecret_GetError(t *testing.T) {
 }
 
 func TestReconcileSecret_CreateError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileSecret from reconcile_secret.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
@@ -198,7 +189,6 @@ func TestReconcileSecret_CreateError(t *testing.T) {
 }
 
 func TestReconcileSecret_UpdateError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileSecret from reconcile_secret.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	// Secret with missing key triggers update
@@ -230,7 +220,6 @@ func TestReconcileSecret_UpdateError(t *testing.T) {
 // =============================================================================
 
 func TestReconcileSecret_SetsOwnerReference(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileSecret from reconcile_secret.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -251,24 +240,19 @@ func TestReconcileSecret_SetsOwnerReference(t *testing.T) {
 // validatePassword
 // =============================================================================
 
-// scaffolded: awaiting validatePassword from internal/controller/reconcile_secret.go
-
 func TestValidatePassword_ValidMinLength(t *testing.T) {
-	t.Skip("scaffolded: awaiting validatePassword from reconcile_secret.go")
 
 	err := validatePassword("abcd1234")
 	assert.NoError(t, err)
 }
 
 func TestValidatePassword_ValidLong(t *testing.T) {
-	t.Skip("scaffolded: awaiting validatePassword from reconcile_secret.go")
 
 	err := validatePassword("a-very-secure-passphrase")
 	assert.NoError(t, err)
 }
 
 func TestValidatePassword_TooShort(t *testing.T) {
-	t.Skip("scaffolded: awaiting validatePassword from reconcile_secret.go")
 
 	err := validatePassword("short")
 	require.Error(t, err)
@@ -276,7 +260,6 @@ func TestValidatePassword_TooShort(t *testing.T) {
 }
 
 func TestValidatePassword_ContainsColon(t *testing.T) {
-	t.Skip("scaffolded: awaiting validatePassword from reconcile_secret.go")
 
 	err := validatePassword("pass:word1")
 	require.Error(t, err)
@@ -284,7 +267,6 @@ func TestValidatePassword_ContainsColon(t *testing.T) {
 }
 
 func TestValidatePassword_ContainsNewline(t *testing.T) {
-	t.Skip("scaffolded: awaiting validatePassword from reconcile_secret.go")
 
 	err := validatePassword("pass\nword1")
 	require.Error(t, err)
@@ -292,7 +274,6 @@ func TestValidatePassword_ContainsNewline(t *testing.T) {
 }
 
 func TestValidatePassword_ContainsCarriageReturn(t *testing.T) {
-	t.Skip("scaffolded: awaiting validatePassword from reconcile_secret.go")
 
 	err := validatePassword("pass\rword1")
 	require.Error(t, err)
@@ -300,14 +281,12 @@ func TestValidatePassword_ContainsCarriageReturn(t *testing.T) {
 }
 
 func TestValidatePassword_ExactlySevenChars(t *testing.T) {
-	t.Skip("scaffolded: awaiting validatePassword from reconcile_secret.go")
 
 	err := validatePassword("1234567")
 	assert.Error(t, err)
 }
 
 func TestValidatePassword_ExactlyEightChars(t *testing.T) {
-	t.Skip("scaffolded: awaiting validatePassword from reconcile_secret.go")
 
 	err := validatePassword("12345678")
 	assert.NoError(t, err)

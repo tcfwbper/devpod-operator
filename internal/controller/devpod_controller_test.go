@@ -26,12 +26,7 @@ import (
 // Reconcile — Happy Path
 // =============================================================================
 
-// scaffolded: awaiting full Reconcile implementation from internal/controller/devpod_controller.go
-// scaffolded: awaiting reconcileSecret, reconcileServiceAccount, reconcileService, reconcileStatefulSet
-// scaffolded: awaiting ready, progressing, pending, degraded from status.go
-
 func TestReconcile_FullHappyPath(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -74,7 +69,6 @@ func TestReconcile_FullHappyPath(t *testing.T) {
 }
 
 func TestReconcile_AddsFinalizer(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").build() // No finalizer
 	c := fakeClientWith(t, dp)
@@ -92,7 +86,6 @@ func TestReconcile_AddsFinalizer(t *testing.T) {
 }
 
 func TestReconcile_ProgressingWhenStatefulSetNotReady(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -125,7 +118,6 @@ func TestReconcile_ProgressingWhenStatefulSetNotReady(t *testing.T) {
 }
 
 func TestReconcile_ProgressingWhenObservedGenerationLags(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -162,7 +154,6 @@ func TestReconcile_ProgressingWhenObservedGenerationLags(t *testing.T) {
 // =============================================================================
 
 func TestReconcile_WritesPasswordSecret(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().withStorageClass("standard").build()
 	secret := newPasswordSecret("dev1", "ns", "validpass1")
@@ -183,7 +174,6 @@ func TestReconcile_WritesPasswordSecret(t *testing.T) {
 }
 
 func TestReconcile_WritesSSHNodePort(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -219,7 +209,6 @@ func TestReconcile_WritesSSHNodePort(t *testing.T) {
 }
 
 func TestReconcile_WritesReadyReplicas(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -258,7 +247,6 @@ func TestReconcile_WritesReadyReplicas(t *testing.T) {
 // =============================================================================
 
 func TestReconcile_PendingWhenPasswordEmpty(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	secret := newPasswordSecret("dev1", "ns", "") // empty password
@@ -280,7 +268,6 @@ func TestReconcile_PendingWhenPasswordEmpty(t *testing.T) {
 }
 
 func TestReconcile_DegradedWhenPasswordInvalid(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	secret := newPasswordSecret("dev1", "ns", "short") // 5 chars < 8
@@ -304,7 +291,6 @@ func TestReconcile_DegradedWhenPasswordInvalid(t *testing.T) {
 }
 
 func TestReconcile_DegradedWhenStorageClassNotFound(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -338,7 +324,6 @@ func TestReconcile_DegradedWhenStorageClassNotFound(t *testing.T) {
 func TestReconcile_NotFound(t *testing.T) {
 	// This test can run since Reconcile already exists (stub returns success for not-found)
 	// but the production behavior (checking for NotFound) is not yet implemented
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	c := fakeClientWith(t) // no DevPod
 	r := newTestReconciler(c)
@@ -351,7 +336,6 @@ func TestReconcile_NotFound(t *testing.T) {
 }
 
 func TestReconcile_SecretReconcileError(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
@@ -371,7 +355,6 @@ func TestReconcile_SecretReconcileError(t *testing.T) {
 }
 
 func TestReconcile_ServiceAccountReconcileError(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -398,7 +381,6 @@ func TestReconcile_ServiceAccountReconcileError(t *testing.T) {
 }
 
 func TestReconcile_ServiceReconcileError(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -429,7 +411,6 @@ func TestReconcile_ServiceReconcileError(t *testing.T) {
 }
 
 func TestReconcile_StatefulSetReconcileError(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -466,7 +447,6 @@ func TestReconcile_StatefulSetReconcileError(t *testing.T) {
 }
 
 func TestReconcile_StorageClassGetError(t *testing.T) {
-	t.Skip("scaffolded: awaiting full Reconcile implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -493,10 +473,7 @@ func TestReconcile_StorageClassGetError(t *testing.T) {
 // Finalize
 // =============================================================================
 
-// scaffolded: awaiting finalize implementation from internal/controller/devpod_controller.go
-
 func TestFinalize_DeletesPVCsWhenReclaimDelete(t *testing.T) {
-	t.Skip("scaffolded: awaiting finalize implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -548,7 +525,6 @@ func TestFinalize_DeletesPVCsWhenReclaimDelete(t *testing.T) {
 }
 
 func TestFinalize_RetainsPVCsWhenReclaimRetain(t *testing.T) {
-	t.Skip("scaffolded: awaiting finalize implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -581,7 +557,6 @@ func TestFinalize_RetainsPVCsWhenReclaimRetain(t *testing.T) {
 }
 
 func TestFinalize_RemovesFinalizer(t *testing.T) {
-	t.Skip("scaffolded: awaiting finalize implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -604,11 +579,14 @@ func TestFinalize_RemovesFinalizer(t *testing.T) {
 }
 
 func TestFinalize_NoFinalizerPresent(t *testing.T) {
-	t.Skip("scaffolded: awaiting finalize implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withDeletionTimestamp().
-		build() // no finalizer
+		build()
+	// Add a foreign finalizer so the fake client accepts the object
+	// (objects with DeletionTimestamp but no finalizers are immediately GC'd).
+	// Our finalizer (apps.devpod.com/finalizer) is still absent.
+	dp.Finalizers = []string{"some.other/finalizer"}
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -620,7 +598,6 @@ func TestFinalize_NoFinalizerPresent(t *testing.T) {
 }
 
 func TestFinalize_PVCDeleteNotFoundIgnored(t *testing.T) {
-	t.Skip("scaffolded: awaiting finalize implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -655,7 +632,6 @@ func TestFinalize_PVCDeleteNotFoundIgnored(t *testing.T) {
 }
 
 func TestFinalize_PVCListError(t *testing.T) {
-	t.Skip("scaffolded: awaiting finalize implementation from devpod_controller.go")
 
 	dp := newDevPod("dev1", "ns").
 		withFinalizer().
@@ -683,7 +659,6 @@ func TestFinalize_PVCListError(t *testing.T) {
 // =============================================================================
 
 func TestSetupWithManager_Registers(t *testing.T) {
-	t.Skip("scaffolded: awaiting envtest or manager mock — integration-level test")
 
 	// This test requires a real or fake Manager and is typically verified
 	// in integration tests. The controller should be named "devpod".

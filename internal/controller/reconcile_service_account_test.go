@@ -20,10 +20,7 @@ import (
 // reconcileServiceAccount — Happy Path
 // =============================================================================
 
-// scaffolded: awaiting reconcileServiceAccount from internal/controller/reconcile_service_account.go
-
 func TestReconcileServiceAccount_CreatesWhenNotFound(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileServiceAccount from reconcile_service_account.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -47,7 +44,6 @@ func TestReconcileServiceAccount_CreatesWhenNotFound(t *testing.T) {
 }
 
 func TestReconcileServiceAccount_NoOpWhenCorrect(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileServiceAccount from reconcile_service_account.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	existingSA := &corev1.ServiceAccount{
@@ -65,7 +61,6 @@ func TestReconcileServiceAccount_NoOpWhenCorrect(t *testing.T) {
 }
 
 func TestReconcileServiceAccount_FixesNilAutomount(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileServiceAccount from reconcile_service_account.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	existingSA := &corev1.ServiceAccount{
@@ -89,7 +84,6 @@ func TestReconcileServiceAccount_FixesNilAutomount(t *testing.T) {
 }
 
 func TestReconcileServiceAccount_FixesTrueAutomount(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileServiceAccount from reconcile_service_account.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	existingSA := &corev1.ServiceAccount{
@@ -116,7 +110,6 @@ func TestReconcileServiceAccount_FixesTrueAutomount(t *testing.T) {
 // =============================================================================
 
 func TestReconcileServiceAccount_GetError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileServiceAccount from reconcile_service_account.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
@@ -134,7 +127,6 @@ func TestReconcileServiceAccount_GetError(t *testing.T) {
 }
 
 func TestReconcileServiceAccount_CreateError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileServiceAccount from reconcile_service_account.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
@@ -158,7 +150,6 @@ func TestReconcileServiceAccount_CreateError(t *testing.T) {
 }
 
 func TestReconcileServiceAccount_UpdateError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileServiceAccount from reconcile_service_account.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	existingSA := &corev1.ServiceAccount{
@@ -187,7 +178,6 @@ func TestReconcileServiceAccount_UpdateError(t *testing.T) {
 // =============================================================================
 
 func TestReconcileServiceAccount_SetsOwnerReference(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileServiceAccount from reconcile_service_account.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := fakeClientWith(t, dp)

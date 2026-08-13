@@ -21,10 +21,7 @@ import (
 // reconcileService — Happy Path
 // =============================================================================
 
-// scaffolded: awaiting reconcileService from internal/controller/reconcile_service.go
-
 func TestReconcileService_CreatesWhenNotFound(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileService from reconcile_service.go")
 
 	dp := newDevPod("dev1", "ns").
 		withNodePorts(
@@ -67,7 +64,6 @@ func TestReconcileService_CreatesWhenNotFound(t *testing.T) {
 }
 
 func TestReconcileService_NoOpWhenHashMatches(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileService, specHash from reconcile_service.go, helpers.go")
 
 	dp := newDevPod("dev1", "ns").
 		withNodePorts(appsv1.NodePortMapping{Src: 22, Dest: 30022}).
@@ -102,7 +98,6 @@ func TestReconcileService_NoOpWhenHashMatches(t *testing.T) {
 }
 
 func TestReconcileService_UpdatesWhenHashDiffers(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileService from reconcile_service.go")
 
 	dp := newDevPod("dev1", "ns").
 		withNodePorts(
@@ -144,7 +139,6 @@ func TestReconcileService_UpdatesWhenHashDiffers(t *testing.T) {
 }
 
 func TestReconcileService_PreservesClusterIP(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileService from reconcile_service.go")
 
 	dp := newDevPod("dev1", "ns").
 		withNodePorts(appsv1.NodePortMapping{Src: 22, Dest: 30022}).
@@ -178,7 +172,6 @@ func TestReconcileService_PreservesClusterIP(t *testing.T) {
 // =============================================================================
 
 func TestReconcileService_NilAnnotations(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileService from reconcile_service.go")
 
 	dp := newDevPod("dev1", "ns").
 		withNodePorts(appsv1.NodePortMapping{Src: 22, Dest: 30022}).
@@ -209,7 +202,6 @@ func TestReconcileService_NilAnnotations(t *testing.T) {
 // =============================================================================
 
 func TestReconcileService_GetError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileService from reconcile_service.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
@@ -228,7 +220,6 @@ func TestReconcileService_GetError(t *testing.T) {
 }
 
 func TestReconcileService_CreateError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileService from reconcile_service.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
@@ -253,7 +244,6 @@ func TestReconcileService_CreateError(t *testing.T) {
 }
 
 func TestReconcileService_UpdateError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileService from reconcile_service.go")
 
 	dp := newDevPod("dev1", "ns").
 		withNodePorts(appsv1.NodePortMapping{Src: 22, Dest: 30022}).
@@ -285,7 +275,6 @@ func TestReconcileService_UpdateError(t *testing.T) {
 }
 
 func TestReconcileService_HashComputationError(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileService from reconcile_service.go — requires seam for specHash failure injection")
 
 	// This test requires a way to inject a specHash failure.
 	// Blocked until the production code provides a testable seam or the function
@@ -297,7 +286,6 @@ func TestReconcileService_HashComputationError(t *testing.T) {
 // =============================================================================
 
 func TestReconcileService_SetsOwnerReference(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileService from reconcile_service.go")
 
 	dp := newDevPod("dev1", "ns").withFinalizer().build()
 	c := fakeClientWith(t, dp)
@@ -314,7 +302,6 @@ func TestReconcileService_SetsOwnerReference(t *testing.T) {
 }
 
 func TestReconcileService_LabelsAndSelector(t *testing.T) {
-	t.Skip("scaffolded: awaiting reconcileService, standardLabels, selectorLabels from reconcile_service.go, helpers.go")
 
 	dp := newDevPod("dev1", "ns").
 		withNodePorts(appsv1.NodePortMapping{Src: 22, Dest: 30022}).

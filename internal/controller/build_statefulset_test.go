@@ -17,8 +17,6 @@ import (
 // buildStatefulSet — Basic structure
 // =============================================================================
 
-// scaffolded: awaiting buildStatefulSet from internal/controller/build_statefulset.go
-
 func standardTestDevPod() *appsv1.DevPod {
 	return newDevPod("dev1", "ns").
 		withImage("img:1").
@@ -29,7 +27,6 @@ func standardTestDevPod() *appsv1.DevPod {
 }
 
 func TestBuildStatefulSet_BasicStructure(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := standardTestDevPod()
 	sts := buildStatefulSet(dp)
@@ -43,7 +40,6 @@ func TestBuildStatefulSet_BasicStructure(t *testing.T) {
 }
 
 func TestBuildStatefulSet_SelectorLabels(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet, selectorLabels from build_statefulset.go, helpers.go")
 
 	dp := standardTestDevPod()
 	sts := buildStatefulSet(dp)
@@ -53,7 +49,6 @@ func TestBuildStatefulSet_SelectorLabels(t *testing.T) {
 }
 
 func TestBuildStatefulSet_PodTemplateLabels(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet, standardLabels from build_statefulset.go, helpers.go")
 
 	dp := standardTestDevPod()
 	sts := buildStatefulSet(dp)
@@ -63,7 +58,6 @@ func TestBuildStatefulSet_PodTemplateLabels(t *testing.T) {
 }
 
 func TestBuildStatefulSet_PodSecurityContext(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := standardTestDevPod()
 	sts := buildStatefulSet(dp)
@@ -75,7 +69,6 @@ func TestBuildStatefulSet_PodSecurityContext(t *testing.T) {
 }
 
 func TestBuildStatefulSet_PodServiceAccount(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := standardTestDevPod()
 	sts := buildStatefulSet(dp)
@@ -87,7 +80,6 @@ func TestBuildStatefulSet_PodServiceAccount(t *testing.T) {
 }
 
 func TestBuildStatefulSet_TerminationGracePeriod(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := standardTestDevPod()
 	sts := buildStatefulSet(dp)
@@ -100,7 +92,6 @@ func TestBuildStatefulSet_TerminationGracePeriod(t *testing.T) {
 // =============================================================================
 
 func TestBuildStatefulSet_DevpodContainer_Basic(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withImage("myimg:v1").build()
 	sts := buildStatefulSet(dp)
@@ -113,7 +104,6 @@ func TestBuildStatefulSet_DevpodContainer_Basic(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DevpodContainer_SecurityContext(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := standardTestDevPod()
 	sts := buildStatefulSet(dp)
@@ -129,7 +119,6 @@ func TestBuildStatefulSet_DevpodContainer_SecurityContext(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DevpodContainer_Ports(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").
 		withNodePorts(
@@ -149,7 +138,6 @@ func TestBuildStatefulSet_DevpodContainer_Ports(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DevpodContainer_Probes(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := standardTestDevPod()
 	sts := buildStatefulSet(dp)
@@ -167,7 +155,6 @@ func TestBuildStatefulSet_DevpodContainer_Probes(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DevpodContainer_Resources(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := standardTestDevPod()
 	sts := buildStatefulSet(dp)
@@ -182,7 +169,6 @@ func TestBuildStatefulSet_DevpodContainer_Resources(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DevpodContainer_VolumeMount(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withUsername("bob").build()
 	sts := buildStatefulSet(dp)
@@ -196,7 +182,6 @@ func TestBuildStatefulSet_DevpodContainer_VolumeMount(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DevpodContainer_EnvPassword(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").build()
 	sts := buildStatefulSet(dp)
@@ -218,7 +203,6 @@ func TestBuildStatefulSet_DevpodContainer_EnvPassword(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DevpodContainer_Lifecycle(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet, postStartScript from build_statefulset.go")
 
 	dp := standardTestDevPod()
 	sts := buildStatefulSet(dp)
@@ -239,7 +223,6 @@ func TestBuildStatefulSet_DevpodContainer_Lifecycle(t *testing.T) {
 // =============================================================================
 
 func TestBuildStatefulSet_DockerSidecar_Present(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").
 		withDockerEnabled(true).
@@ -255,7 +238,6 @@ func TestBuildStatefulSet_DockerSidecar_Present(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DockerSidecar_Privileged(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withDockerEnabled(true).build()
 	sts := buildStatefulSet(dp)
@@ -267,7 +249,6 @@ func TestBuildStatefulSet_DockerSidecar_Privileged(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DockerSidecar_Command(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withDockerEnabled(true).build()
 	sts := buildStatefulSet(dp)
@@ -277,7 +258,6 @@ func TestBuildStatefulSet_DockerSidecar_Command(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DockerSidecar_Port(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withDockerEnabled(true).build()
 	sts := buildStatefulSet(dp)
@@ -289,7 +269,6 @@ func TestBuildStatefulSet_DockerSidecar_Port(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DockerSidecar_Resources(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withDockerEnabled(true).build()
 	sts := buildStatefulSet(dp)
@@ -304,7 +283,6 @@ func TestBuildStatefulSet_DockerSidecar_Resources(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DockerSidecar_VolumeMount(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withDockerEnabled(true).build()
 	sts := buildStatefulSet(dp)
@@ -316,7 +294,6 @@ func TestBuildStatefulSet_DockerSidecar_VolumeMount(t *testing.T) {
 }
 
 func TestBuildStatefulSet_DockerDisabled_NoSidecar(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withDockerEnabled(false).build()
 	sts := buildStatefulSet(dp)
@@ -330,7 +307,6 @@ func TestBuildStatefulSet_DockerDisabled_NoSidecar(t *testing.T) {
 // =============================================================================
 
 func TestBuildStatefulSet_InitContainer(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withInitImage("init:1").build()
 	sts := buildStatefulSet(dp)
@@ -349,7 +325,6 @@ func TestBuildStatefulSet_InitContainer(t *testing.T) {
 }
 
 func TestBuildStatefulSet_InitContainer_Resources(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := standardTestDevPod()
 	sts := buildStatefulSet(dp)
@@ -368,7 +343,6 @@ func TestBuildStatefulSet_InitContainer_Resources(t *testing.T) {
 // =============================================================================
 
 func TestBuildStatefulSet_VolumeClaimWorkspace(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet, selectorLabels from build_statefulset.go, helpers.go")
 
 	dp := newDevPod("dev1", "ns").
 		withStorageClass("standard").
@@ -388,7 +362,6 @@ func TestBuildStatefulSet_VolumeClaimWorkspace(t *testing.T) {
 }
 
 func TestBuildStatefulSet_VolumeClaimDocker(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").
 		withDockerEnabled(true).
@@ -404,7 +377,6 @@ func TestBuildStatefulSet_VolumeClaimDocker(t *testing.T) {
 }
 
 func TestBuildStatefulSet_VolumeClaimDocker_Absent(t *testing.T) {
-	t.Skip("scaffolded: awaiting buildStatefulSet from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withDockerEnabled(false).build()
 	sts := buildStatefulSet(dp)
@@ -417,10 +389,7 @@ func TestBuildStatefulSet_VolumeClaimDocker_Absent(t *testing.T) {
 // postStartScript
 // =============================================================================
 
-// scaffolded: awaiting postStartScript from internal/controller/build_statefulset.go
-
 func TestPostStartScript_AccountRename(t *testing.T) {
-	t.Skip("scaffolded: awaiting postStartScript from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withUsername("alice").build()
 	script := postStartScript(dp)
@@ -434,7 +403,6 @@ func TestPostStartScript_AccountRename(t *testing.T) {
 }
 
 func TestPostStartScript_PasswordApplication(t *testing.T) {
-	t.Skip("scaffolded: awaiting postStartScript from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withUsername("alice").build()
 	script := postStartScript(dp)
@@ -444,7 +412,6 @@ func TestPostStartScript_PasswordApplication(t *testing.T) {
 }
 
 func TestPostStartScript_AptPackages(t *testing.T) {
-	t.Skip("scaffolded: awaiting postStartScript from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withAptPackages("curl", "git").build()
 	script := postStartScript(dp)
@@ -459,7 +426,6 @@ func TestPostStartScript_AptPackages(t *testing.T) {
 }
 
 func TestPostStartScript_PipPackages(t *testing.T) {
-	t.Skip("scaffolded: awaiting postStartScript from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").withPipPackages("numpy", "pandas").build()
 	script := postStartScript(dp)
@@ -469,7 +435,6 @@ func TestPostStartScript_PipPackages(t *testing.T) {
 }
 
 func TestPostStartScript_NoPackages(t *testing.T) {
-	t.Skip("scaffolded: awaiting postStartScript from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").
 		withAptPackages().
@@ -482,7 +447,6 @@ func TestPostStartScript_NoPackages(t *testing.T) {
 }
 
 func TestPostStartScript_BothPackageTypes(t *testing.T) {
-	t.Skip("scaffolded: awaiting postStartScript from build_statefulset.go")
 
 	dp := newDevPod("dev1", "ns").
 		withAptPackages("curl").
@@ -498,10 +462,7 @@ func TestPostStartScript_BothPackageTypes(t *testing.T) {
 // volumeSize
 // =============================================================================
 
-// scaffolded: awaiting volumeSize from internal/controller/build_statefulset.go
-
 func TestVolumeSize_NonNilNonZero(t *testing.T) {
-	t.Skip("scaffolded: awaiting volumeSize from build_statefulset.go")
 
 	size := quantityPtr(resource.MustParse("100Gi"))
 	result := volumeSize(size)
@@ -509,14 +470,12 @@ func TestVolumeSize_NonNilNonZero(t *testing.T) {
 }
 
 func TestVolumeSize_Nil(t *testing.T) {
-	t.Skip("scaffolded: awaiting volumeSize from build_statefulset.go")
 
 	result := volumeSize(nil)
 	assert.Equal(t, resource.MustParse("50Gi"), result)
 }
 
 func TestVolumeSize_Zero(t *testing.T) {
-	t.Skip("scaffolded: awaiting volumeSize from build_statefulset.go")
 
 	zero := quantityPtr(resource.Quantity{})
 	result := volumeSize(zero)
@@ -527,10 +486,7 @@ func TestVolumeSize_Zero(t *testing.T) {
 // containerSecurityContext
 // =============================================================================
 
-// scaffolded: awaiting containerSecurityContext from internal/controller/build_statefulset.go
-
 func TestContainerSecurityContext_NonPrivileged(t *testing.T) {
-	t.Skip("scaffolded: awaiting containerSecurityContext from build_statefulset.go")
 
 	sc := containerSecurityContext(false)
 
@@ -544,7 +500,6 @@ func TestContainerSecurityContext_NonPrivileged(t *testing.T) {
 }
 
 func TestContainerSecurityContext_Privileged(t *testing.T) {
-	t.Skip("scaffolded: awaiting containerSecurityContext from build_statefulset.go")
 
 	sc := containerSecurityContext(true)
 
@@ -561,10 +516,7 @@ func TestContainerSecurityContext_Privileged(t *testing.T) {
 // resourcePreset
 // =============================================================================
 
-// scaffolded: awaiting resourcePreset from internal/controller/build_statefulset.go
-
 func TestResourcePreset_Values(t *testing.T) {
-	t.Skip("scaffolded: awaiting resourcePreset from build_statefulset.go")
 
 	rr := resourcePreset("1", "3072Mi", "3", "6144Mi")
 
@@ -580,10 +532,7 @@ func TestResourcePreset_Values(t *testing.T) {
 // sshProbe
 // =============================================================================
 
-// scaffolded: awaiting sshProbe from internal/controller/build_statefulset.go
-
 func TestSSHProbe_Fields(t *testing.T) {
-	t.Skip("scaffolded: awaiting sshProbe from build_statefulset.go")
 
 	probe := sshProbe()
 
@@ -600,24 +549,19 @@ func TestSSHProbe_Fields(t *testing.T) {
 // shellQuoteAll
 // =============================================================================
 
-// scaffolded: awaiting shellQuoteAll from internal/controller/build_statefulset.go
-
 func TestShellQuoteAll_MultiplePackages(t *testing.T) {
-	t.Skip("scaffolded: awaiting shellQuoteAll from build_statefulset.go")
 
 	result := shellQuoteAll([]string{"curl", "git"})
 	assert.Equal(t, " \"curl\" \"git\"", result)
 }
 
 func TestShellQuoteAll_SinglePackage(t *testing.T) {
-	t.Skip("scaffolded: awaiting shellQuoteAll from build_statefulset.go")
 
 	result := shellQuoteAll([]string{"curl"})
 	assert.Equal(t, " \"curl\"", result)
 }
 
 func TestShellQuoteAll_MetaCharacters(t *testing.T) {
-	t.Skip("scaffolded: awaiting shellQuoteAll from build_statefulset.go")
 
 	result := shellQuoteAll([]string{"pkg; rm -rf /"})
 	// The result should have the package name escaped via %q
@@ -626,7 +570,6 @@ func TestShellQuoteAll_MetaCharacters(t *testing.T) {
 }
 
 func TestShellQuoteAll_EmptySlice(t *testing.T) {
-	t.Skip("scaffolded: awaiting shellQuoteAll from build_statefulset.go")
 
 	result := shellQuoteAll([]string{})
 	assert.Equal(t, "", result)
