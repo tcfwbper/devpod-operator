@@ -4,6 +4,28 @@ metadata:
   labels:
     app.kubernetes.io/name: devpod-operator
     app.kubernetes.io/managed-by: kustomize
-  name: devpod-sample
+  name: my-devpod
+  namespace: devpod-test
 spec:
-  # TODO(user): Add fields here
+  image: docker.io/tcfwbper/dev-env:1.0.0
+  initWorkspaceImage: docker.io/tcfwbper/dev-env:1.0.0-init-workspace
+  auth:
+    username: devuser
+  persistence:
+    storageClass: local-path
+    size: 50Gi
+    reclaimPolicy: Retain
+  nodePorts:
+    - src: 22
+      dest: 30022
+  packages:
+    apt:
+      - htop
+      - python3-venv
+    pip:
+      - requests
+  docker:
+    enabled: true
+    image: docker.io/docker:dind
+    persistence:
+      size: 50Gi
