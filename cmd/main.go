@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"os"
@@ -28,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -52,53 +54,80 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
-// nolint:gocyclo
-func main() {
-	var metricsAddr string
-	var metricsCertPath, metricsCertName, metricsCertKey string
-	var webhookCertPath, webhookCertName, webhookCertKey string
-	var enableLeaderElection bool
-	var probeAddr string
-	var secureMetrics bool
-	var enableHTTP2 bool
-	var tlsOpts []func(*tls.Config)
-	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
-		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
+// flagConfig holds parsed CLI flag values.
+type flagConfig struct {
+	metricsAddr          string
+	probeAddr            string
+	enableLeaderElection bool
+	secureMetrics        bool
+	enableHTTP2          bool
+	metricsCertPath      string
+	metricsCertName      string
+	metricsCertKey       string
+	webhookCertPath      string
+	webhookCertName      string
+	webhookCertKey       string
+}
+
+// registerFlags registers CLI flags on the given FlagSet and returns a flagConfig
+// holding the bound variables.
+func registerFlags(fs *flag.FlagSet) *flagConfig {
+	cfg := &flagConfig{}
+	fs.StringVar(&cfg.metricsAddr, "metrics-bind-address", "0",
+		"The address the metrics endpoint binds to. "+
+			"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
+	fs.StringVar(&cfg.probeAddr, "health-probe-bind-address", ":8081",
+		"The address the probe endpoint binds to.")
+	fs.BoolVar(&cfg.enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&secureMetrics, "metrics-secure", true,
+	fs.BoolVar(&cfg.secureMetrics, "metrics-secure", true,
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
-	flag.StringVar(&webhookCertPath, "webhook-cert-path", "", "The directory that contains the webhook certificate.")
-	flag.StringVar(&webhookCertName, "webhook-cert-name", "tls.crt", "The name of the webhook certificate file.")
-	flag.StringVar(&webhookCertKey, "webhook-cert-key", "tls.key", "The name of the webhook key file.")
-	flag.StringVar(&metricsCertPath, "metrics-cert-path", "",
+	fs.StringVar(&cfg.webhookCertPath, "webhook-cert-path", "",
+		"The directory that contains the webhook certificate.")
+	fs.StringVar(&cfg.webhookCertName, "webhook-cert-name", "tls.crt",
+		"The name of the webhook certificate file.")
+	fs.StringVar(&cfg.webhookCertKey, "webhook-cert-key", "tls.key",
+		"The name of the webhook key file.")
+	fs.StringVar(&cfg.metricsCertPath, "metrics-cert-path", "",
 		"The directory that contains the metrics server certificate.")
-	flag.StringVar(&metricsCertName, "metrics-cert-name", "tls.crt", "The name of the metrics server certificate file.")
-	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
-	flag.BoolVar(&enableHTTP2, "enable-http2", false,
+	fs.StringVar(&cfg.metricsCertName, "metrics-cert-name", "tls.crt",
+		"The name of the metrics server certificate file.")
+	fs.StringVar(&cfg.metricsCertKey, "metrics-cert-key", "tls.key",
+		"The name of the metrics server key file.")
+	fs.BoolVar(&cfg.enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	opts := zap.Options{
-		Development: true,
-	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+	return cfg
+}
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+// disableHTTP2 restricts the given TLS config to HTTP/1.1 only.
+func disableHTTP2(c *tls.Config) {
+	setupLog.Info("Disabling HTTP/2")
+	c.NextProtos = []string{"http/1.1"}
+}
 
+// runDeps holds injectable dependencies for the bootstrap sequence.
+type runDeps struct {
+	newManager       func(config *rest.Config, opts ctrl.Options) (ctrl.Manager, error)
+	getConfig        func() *rest.Config
+	signalHandler    func() context.Context
+	exit             func(code int)
+	setupWithManager func(r *controller.DevPodReconciler, mgr ctrl.Manager) error
+}
+
+// run executes the bootstrap sequence: TLS config, manager creation,
+// controller wiring, probe registration, and manager start.
+//
+//nolint:gocyclo
+func run(cfg *flagConfig, deps runDeps) {
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
 	// prevent from being vulnerable to the HTTP/2 Stream Cancellation and
 	// Rapid Reset CVEs. For more information see:
 	// - https://github.com/advisories/GHSA-qppj-fm5r-hxr3
 	// - https://github.com/advisories/GHSA-4374-p667-p6c8
-	disableHTTP2 := func(c *tls.Config) {
-		setupLog.Info("Disabling HTTP/2")
-		c.NextProtos = []string{"http/1.1"}
-	}
-
-	if !enableHTTP2 {
+	var tlsOpts []func(*tls.Config)
+	if !cfg.enableHTTP2 {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
@@ -108,13 +137,13 @@ func main() {
 		TLSOpts: webhookTLSOpts,
 	}
 
-	if len(webhookCertPath) > 0 {
+	if len(cfg.webhookCertPath) > 0 {
 		setupLog.Info("Initializing webhook certificate watcher using provided certificates",
-			"webhook-cert-path", webhookCertPath, "webhook-cert-name", webhookCertName, "webhook-cert-key", webhookCertKey)
+			"webhook-cert-path", cfg.webhookCertPath, "webhook-cert-name", cfg.webhookCertName, "webhook-cert-key", cfg.webhookCertKey)
 
-		webhookServerOptions.CertDir = webhookCertPath
-		webhookServerOptions.CertName = webhookCertName
-		webhookServerOptions.KeyName = webhookCertKey
+		webhookServerOptions.CertDir = cfg.webhookCertPath
+		webhookServerOptions.CertName = cfg.webhookCertName
+		webhookServerOptions.KeyName = cfg.webhookCertKey
 	}
 
 	webhookServer := webhook.NewServer(webhookServerOptions)
@@ -124,12 +153,12 @@ func main() {
 	// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.24.1/pkg/metrics/server
 	// - https://book.kubebuilder.io/reference/metrics.html
 	metricsServerOptions := metricsserver.Options{
-		BindAddress:   metricsAddr,
-		SecureServing: secureMetrics,
+		BindAddress:   cfg.metricsAddr,
+		SecureServing: cfg.secureMetrics,
 		TLSOpts:       tlsOpts,
 	}
 
-	if secureMetrics {
+	if cfg.secureMetrics {
 		// FilterProvider is used to protect the metrics endpoint with authn/authz.
 		// These configurations ensure that only authorized users and service accounts
 		// can access the metrics endpoint. The RBAC are configured in 'config/rbac/kustomization.yaml'. More info:
@@ -145,21 +174,21 @@ func main() {
 	// - [METRICS-WITH-CERTS] at config/default/kustomization.yaml to generate and use certificates
 	// managed by cert-manager for the metrics server.
 	// - [PROMETHEUS-WITH-CERTS] at config/prometheus/kustomization.yaml for TLS certification.
-	if len(metricsCertPath) > 0 {
+	if len(cfg.metricsCertPath) > 0 {
 		setupLog.Info("Initializing metrics certificate watcher using provided certificates",
-			"metrics-cert-path", metricsCertPath, "metrics-cert-name", metricsCertName, "metrics-cert-key", metricsCertKey)
+			"metrics-cert-path", cfg.metricsCertPath, "metrics-cert-name", cfg.metricsCertName, "metrics-cert-key", cfg.metricsCertKey)
 
-		metricsServerOptions.CertDir = metricsCertPath
-		metricsServerOptions.CertName = metricsCertName
-		metricsServerOptions.KeyName = metricsCertKey
+		metricsServerOptions.CertDir = cfg.metricsCertPath
+		metricsServerOptions.CertName = cfg.metricsCertName
+		metricsServerOptions.KeyName = cfg.metricsCertKey
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	mgr, err := deps.newManager(deps.getConfig(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
+		HealthProbeBindAddress: cfg.probeAddr,
+		LeaderElection:         cfg.enableLeaderElection,
 		LeaderElectionID:       "cec0a61b.devpod.com",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
@@ -175,30 +204,61 @@ func main() {
 	})
 	if err != nil {
 		setupLog.Error(err, "Failed to start manager")
-		os.Exit(1)
+		deps.exit(1)
+		return
 	}
 
-	if err := (&controller.DevPodReconciler{
+	if err := deps.setupWithManager(&controller.DevPodReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}, mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "devpod")
-		os.Exit(1)
+		deps.exit(1)
+		return
 	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "Failed to set up health check")
-		os.Exit(1)
+		deps.exit(1)
+		return
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "Failed to set up ready check")
-		os.Exit(1)
+		deps.exit(1)
+		return
 	}
 
 	setupLog.Info("Starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(deps.signalHandler()); err != nil {
 		setupLog.Error(err, "Failed to run manager")
-		os.Exit(1)
+		deps.exit(1)
+		return
 	}
+}
+
+func main() {
+	cfg := registerFlags(flag.CommandLine)
+
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
+	flag.Parse()
+
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	deps := runDeps{
+		newManager: ctrl.NewManager,
+		getConfig:  func() *rest.Config { return ctrl.GetConfigOrDie() },
+		signalHandler: func() context.Context {
+			return ctrl.SetupSignalHandler()
+		},
+		exit: os.Exit,
+		setupWithManager: func(r *controller.DevPodReconciler, mgr ctrl.Manager) error {
+			return r.SetupWithManager(mgr)
+		},
+	}
+
+	run(cfg, deps)
 }
