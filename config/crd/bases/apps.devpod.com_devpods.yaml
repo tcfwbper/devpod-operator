@@ -1,0 +1,292 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: devpods.apps.devpod.com
+spec:
+  group: apps.devpod.com
+  names:
+    kind: DevPod
+    listKind: DevPodList
+    plural: devpods
+    shortNames:
+    - dp
+    singular: devpod
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.auth.username
+      name: Username
+      type: string
+    - jsonPath: .status.sshNodePort
+      name: SSH
+      type: integer
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].reason
+      name: Reason
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: DevPod is the Schema for the devpods API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of DevPod.
+            properties:
+              auth:
+                description: auth holds authentication configuration.
+                properties:
+                  username:
+                    description: username is the Linux account name inside the DevPod.
+                    maxLength: 31
+                    minLength: 1
+                    pattern: ^[a-z_][a-z0-9_-]*$
+                    type: string
+                    x-kubernetes-validations:
+                    - message: auth.username is immutable
+                      rule: self == oldSelf
+                    - message: auth.username collides with an account or group that
+                        already exists in the DevPod image
+                      rule: '!(self in [''root'',''daemon'',''bin'',''sys'',''sync'',''games'',''man'',''lp'',''mail'',''news'',''uucp'',''proxy'',''www-data'',''backup'',''list'',''irc'',''nobody'',''sshd'',''user'',''users'',''staff'',''adm'',''tty'',''disk'',''dialout'',''cdrom'',''floppy'',''tape'',''sudo'',''audio'',''video'',''plugdev'',''ssh'',''docker'',''nogroup'',''src'',''shadow'',''utmp'',''crontab'',''operator'',''_apt''])'
+                required:
+                - username
+                type: object
+              docker:
+                description: docker holds Docker-in-Docker sidecar configuration.
+                properties:
+                  enabled:
+                    default: true
+                    description: enabled controls whether the Docker sidecar is deployed.
+                    type: boolean
+                  image:
+                    default: docker.io/docker:dind
+                    description: image is the Docker-in-Docker container image.
+                    minLength: 1
+                    type: string
+                  persistence:
+                    description: persistence holds storage configuration for Docker
+                      data.
+                    properties:
+                      size:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        default: 50Gi
+                        description: size is the requested storage size for Docker
+                          data.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                        x-kubernetes-validations:
+                        - message: docker.persistence.size is immutable
+                          rule: self == oldSelf
+                    type: object
+                type: object
+              image:
+                default: docker.io/tcfwbper/dev-env:1.0.0
+                description: image is the main DevPod container image.
+                minLength: 1
+                type: string
+              initWorkspaceImage:
+                default: docker.io/tcfwbper/dev-env:1.0.0-init-workspace
+                description: initWorkspaceImage is the init container image for workspace
+                  setup.
+                minLength: 1
+                type: string
+              nodePorts:
+                description: nodePorts maps container ports to node ports.
+                items:
+                  description: NodePortMapping maps a container port to a node port.
+                  properties:
+                    dest:
+                      description: dest is the node port.
+                      format: int32
+                      maximum: 32767
+                      minimum: 30000
+                      type: integer
+                    src:
+                      description: src is the container port.
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                  required:
+                  - dest
+                  - src
+                  type: object
+                maxItems: 16
+                minItems: 1
+                type: array
+                x-kubernetes-list-map-keys:
+                - src
+                x-kubernetes-list-type: map
+                x-kubernetes-validations:
+                - message: nodePorts must contain an entry with src 22 (ssh)
+                  rule: self.exists(e, e.src == 22)
+                - message: nodePorts dest values must be unique
+                  rule: self.all(x, self.all(y, x.src == y.src || x.dest != y.dest))
+              packages:
+                description: packages holds package installation configuration.
+                properties:
+                  apt:
+                    description: apt is a list of apt packages to install.
+                    items:
+                      type: string
+                    type: array
+                    x-kubernetes-list-type: atomic
+                  pip:
+                    description: pip is a list of pip packages to install.
+                    items:
+                      type: string
+                    type: array
+                    x-kubernetes-list-type: atomic
+                type: object
+              persistence:
+                description: persistence holds persistent storage configuration.
+                properties:
+                  reclaimPolicy:
+                    default: Retain
+                    description: reclaimPolicy controls PVC lifecycle on DevPod deletion.
+                    enum:
+                    - Retain
+                    - Delete
+                    type: string
+                  size:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    default: 50Gi
+                    description: size is the requested storage size.
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                    x-kubernetes-validations:
+                    - message: persistence.size is immutable
+                      rule: self == oldSelf
+                  storageClass:
+                    description: storageClass is the name of the StorageClass to use.
+                    minLength: 1
+                    type: string
+                    x-kubernetes-validations:
+                    - message: persistence.storageClass is immutable
+                      rule: self == oldSelf
+                required:
+                - storageClass
+                type: object
+            required:
+            - auth
+            - nodePorts
+            - persistence
+            type: object
+          status:
+            description: status defines the observed state of DevPod.
+            properties:
+              conditions:
+                description: conditions represent the current state of the DevPod
+                  resource.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              observedGeneration:
+                description: observedGeneration is the generation this status was
+                  computed from.
+                format: int64
+                type: integer
+              passwordSecret:
+                description: passwordSecret is the name of the owned Secret holding
+                  the ssh password.
+                type: string
+              readyReplicas:
+                description: readyReplicas mirrors the StatefulSet readyReplicas.
+                format: int32
+                type: integer
+              sshNodePort:
+                description: sshNodePort is the node port mapped to container port
+                  22.
+                format: int32
+                type: integer
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

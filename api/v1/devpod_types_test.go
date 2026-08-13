@@ -29,101 +29,58 @@ import (
 // Constants
 // =============================================================================
 
-// Status: scaffolded
-// Blocker: Constants ConditionReady, ConditionProgressing, ConditionDegraded are
-// not yet defined in devpod_types.go.
 func TestConditionTypeConstants(t *testing.T) {
-	t.Skip("scaffolded: ConditionReady, ConditionProgressing, ConditionDegraded constants not yet defined in devpod_types.go")
-
-	// Once the constants are defined, uncomment and verify:
-	// assert.Equal(t, "Ready", ConditionReady)
-	// assert.Equal(t, "Progressing", ConditionProgressing)
-	// assert.Equal(t, "Degraded", ConditionDegraded)
+	assert.Equal(t, "Ready", ConditionReady)
+	assert.Equal(t, "Progressing", ConditionProgressing)
+	assert.Equal(t, "Degraded", ConditionDegraded)
 }
 
-// Status: scaffolded
-// Blocker: Reason constants (ReasonPasswordNotSet, ReasonInvalidPassword,
-// ReasonStorageClassNotFound, ReasonReconcileError, ReasonWaitingForStatefulSet,
-// ReasonDevPodReady) are not yet defined in devpod_types.go.
 func TestReasonConstants(t *testing.T) {
-	t.Skip("scaffolded: Reason constants (ReasonPasswordNotSet, ReasonInvalidPassword, ReasonStorageClassNotFound, ReasonReconcileError, ReasonWaitingForStatefulSet, ReasonDevPodReady) not yet defined in devpod_types.go")
-
-	// Once the constants are defined, uncomment and verify:
-	// assert.Equal(t, "PasswordNotSet", ReasonPasswordNotSet)
-	// assert.Equal(t, "InvalidPassword", ReasonInvalidPassword)
-	// assert.Equal(t, "StorageClassNotFound", ReasonStorageClassNotFound)
-	// assert.Equal(t, "ReconcileError", ReasonReconcileError)
-	// assert.Equal(t, "WaitingForStatefulSet", ReasonWaitingForStatefulSet)
-	// assert.Equal(t, "DevPodReady", ReasonDevPodReady)
+	assert.Equal(t, "PasswordNotSet", ReasonPasswordNotSet)
+	assert.Equal(t, "InvalidPassword", ReasonInvalidPassword)
+	assert.Equal(t, "StorageClassNotFound", ReasonStorageClassNotFound)
+	assert.Equal(t, "ReconcileError", ReasonReconcileError)
+	assert.Equal(t, "WaitingForStatefulSet", ReasonWaitingForStatefulSet)
+	assert.Equal(t, "DevPodReady", ReasonDevPodReady)
 }
 
-// Status: scaffolded
-// Blocker: PVCReclaimPolicy type and constants (PVCReclaimRetain, PVCReclaimDelete)
-// are not yet defined in devpod_types.go.
 func TestPVCReclaimPolicyValues(t *testing.T) {
-	t.Skip("scaffolded: PVCReclaimPolicy type and constants (PVCReclaimRetain, PVCReclaimDelete) not yet defined in devpod_types.go")
-
-	// Once the type and constants are defined, uncomment and verify:
-	// assert.Equal(t, PVCReclaimPolicy("Retain"), PVCReclaimRetain)
-	// assert.Equal(t, PVCReclaimPolicy("Delete"), PVCReclaimDelete)
+	assert.Equal(t, PVCReclaimPolicy("Retain"), PVCReclaimRetain)
+	assert.Equal(t, PVCReclaimPolicy("Delete"), PVCReclaimDelete)
 }
 
 // =============================================================================
 // DevPodSpec — DockerEnabled
 // =============================================================================
 
-// Status: scaffolded
-// Blocker: DockerEnabled() method and DockerSpec/Docker field on DevPodSpec are
-// not yet defined in devpod_types.go.
 func TestDevPodSpec_DockerEnabled_NilDockerEnabled(t *testing.T) {
-	t.Skip("scaffolded: DockerEnabled() method and Docker field on DevPodSpec not yet defined in devpod_types.go")
-
-	// Once DockerSpec and DockerEnabled() are implemented:
-	// spec := &DevPodSpec{
-	//     Docker: DockerSpec{Enabled: nil},
-	// }
-	// assert.True(t, spec.DockerEnabled())
+	spec := &DevPodSpec{
+		Docker: DockerSpec{Enabled: nil},
+	}
+	assert.True(t, spec.DockerEnabled())
 }
 
-// Status: scaffolded
-// Blocker: DockerEnabled() method and DockerSpec/Docker field on DevPodSpec are
-// not yet defined in devpod_types.go.
 func TestDevPodSpec_DockerEnabled_ExplicitTrue(t *testing.T) {
-	t.Skip("scaffolded: DockerEnabled() method and Docker field on DevPodSpec not yet defined in devpod_types.go")
-
-	// Once DockerSpec and DockerEnabled() are implemented:
-	// enabled := true
-	// spec := &DevPodSpec{
-	//     Docker: DockerSpec{Enabled: &enabled},
-	// }
-	// assert.True(t, spec.DockerEnabled())
+	enabled := true
+	spec := &DevPodSpec{
+		Docker: DockerSpec{Enabled: &enabled},
+	}
+	assert.True(t, spec.DockerEnabled())
 }
 
-// Status: scaffolded
-// Blocker: DockerEnabled() method and DockerSpec/Docker field on DevPodSpec are
-// not yet defined in devpod_types.go.
 func TestDevPodSpec_DockerEnabled_ExplicitFalse(t *testing.T) {
-	t.Skip("scaffolded: DockerEnabled() method and Docker field on DevPodSpec not yet defined in devpod_types.go")
-
-	// Once DockerSpec and DockerEnabled() are implemented:
-	// enabled := false
-	// spec := &DevPodSpec{
-	//     Docker: DockerSpec{Enabled: &enabled},
-	// }
-	// assert.False(t, spec.DockerEnabled())
+	enabled := false
+	spec := &DevPodSpec{
+		Docker: DockerSpec{Enabled: &enabled},
+	}
+	assert.False(t, spec.DockerEnabled())
 }
 
-// Status: scaffolded
-// Blocker: DockerEnabled() method and DockerSpec/Docker field on DevPodSpec are
-// not yet defined in devpod_types.go.
 func TestDevPodSpec_DockerEnabled_ZeroValueDockerSpec(t *testing.T) {
-	t.Skip("scaffolded: DockerEnabled() method and Docker field on DevPodSpec not yet defined in devpod_types.go")
-
-	// Once DockerSpec and DockerEnabled() are implemented:
-	// spec := &DevPodSpec{
-	//     Docker: DockerSpec{},
-	// }
-	// assert.True(t, spec.DockerEnabled())
+	spec := &DevPodSpec{
+		Docker: DockerSpec{},
+	}
+	assert.True(t, spec.DockerEnabled())
 }
 
 // =============================================================================

@@ -54,7 +54,17 @@ var _ = Describe("DevPod Controller", func() {
 						Name:      resourceName,
 						Namespace: resourceNamespace,
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: appsv1.DevPodSpec{
+						Auth: appsv1.AuthSpec{
+							Username: "testuser",
+						},
+						Persistence: appsv1.PersistenceSpec{
+							StorageClass: "standard",
+						},
+						NodePorts: []appsv1.NodePortMapping{
+							{Src: 22, Dest: 30022},
+						},
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
