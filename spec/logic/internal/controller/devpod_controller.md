@@ -30,7 +30,7 @@ Does **not** construct Kubernetes resource manifests directly — that is delega
 | `reconcile_secret` | Secret sub-reconciler | Call `reconcileSecret(ctx, devpod)` and `validatePassword(password)` | Must not read or write Secret data outside these calls |
 | `reconcile_service_account` | ServiceAccount sub-reconciler | Call `reconcileServiceAccount(ctx, devpod)` | — |
 | `reconcile_service` | Service sub-reconciler | Call `reconcileService(ctx, devpod)` | — |
-| `reconcile_statefulset` | StatefulSet sub-reconciler | Call `reconcileStatefulSet(ctx, devpod)` | — |
+| `reconcile_statefulset` | StatefulSet sub-reconciler | Call `reconcileStatefulSet(ctx, devpod, secret)` | — |
 | `status` | Condition and requeue management | Call `ready()`, `progressing()`, `pending()`, `degraded()` | Must not call `apimeta.SetStatusCondition` directly |
 | `helpers` | Shared utilities | Call `sshNodePort()`, `selectorLabels()` | — |
 | `controller-runtime` | Framework | `ctrl.Request`, `ctrl.Result`, `ctrl.NewControllerManagedBy`, `controllerutil.ContainsFinalizer/AddFinalizer/RemoveFinalizer`, `log.FromContext` | Must not use low-level informer or workqueue APIs directly |
@@ -51,7 +51,7 @@ Construction constraints:
 6. Verifies the requested `spec.persistence.storageClass` exists by fetching the `StorageClass`. If not found, reports `Degraded/StorageClassNotFound`. Other errors report `Degraded/ReconcileError`.
 7. Calls `reconcileServiceAccount`. On error, reports `Degraded/ReconcileError`.
 8. Calls `reconcileService`. On error, reports `Degraded/ReconcileError`. Writes `status.sshNodePort` from the returned Service.
-9. Calls `reconcileStatefulSet`. On error, reports `Degraded/ReconcileError`. Writes `status.readyReplicas` from the returned StatefulSet.
+9. Calls `reconcileStatefulSet(ctx, devpod, secret)`, passing the Secret obtained in step 4. On error, reports `Degraded/ReconcileError`. Writes `status.readyReplicas` from the returned StatefulSet.
 10. Checks rollout: if `statefulSet.Status.ObservedGeneration < statefulSet.Generation` or `ReadyReplicas < 1`, reports `Progressing/WaitingForStatefulSet`.
 11. Otherwise, reports `Ready/DevPodReady`.
 
