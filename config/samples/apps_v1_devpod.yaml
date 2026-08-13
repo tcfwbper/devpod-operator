@@ -1,0 +1,9 @@
+apiVersion: apps.devpod.com/v1
+kind: DevPod
+metadata:
+  labels:
+    app.kubernetes.io/name: devpod-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: devpod-sample
+spec:
+  # TODO(user): Add fields here
