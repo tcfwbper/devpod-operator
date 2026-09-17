@@ -43,6 +43,7 @@ import (
 )
 
 var (
+	version  = "dev"
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
@@ -247,6 +248,8 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	setupLog.Info("DevPod operator", "version", version)
 
 	deps := runDeps{
 		newManager: ctrl.NewManager,
