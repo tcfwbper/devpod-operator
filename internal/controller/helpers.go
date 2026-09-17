@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"sort"
+	"slices"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -12,9 +12,21 @@ import (
 	appsv1 "github.com/tcfwbper/devpod-operator/api/v1"
 )
 
+const (
+	labelKeyName        = "app.kubernetes.io/name"
+	labelKeyInstance    = "app.kubernetes.io/instance"
+	labelKeyManagedBy   = "app.kubernetes.io/managed-by"
+	labelValueName      = "devpod"
+	labelValueManagedBy = "devpod-operator"
+	volumeNameWorkspace = "workspace"
+	containerNameDevpod = "devpod"
+	secretKeyPassword   = "ubuntu-password"
+	portNameSSH         = "ssh"
+)
+
 // specHash JSON-marshals the provided value and returns the first 32 hex
 // characters of its SHA-256 hash. Returns an error if marshaling fails.
-func specHash(spec interface{}) (string, error) {
+func specHash(spec any) (string, error) {
 	data, err := json.Marshal(spec)
 	if err != nil {
 		return "", fmt.Errorf("computing spec hash: %w", err)
@@ -32,7 +44,7 @@ func secretDataHash(data map[string][]byte) string {
 	for k := range data {
 		keys = append(keys, k)
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 
 	var buf []byte
 	for _, k := range keys {
@@ -48,9 +60,9 @@ func secretDataHash(data map[string][]byte) string {
 // by the given DevPod.
 func standardLabels(dp *appsv1.DevPod) map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name":       "devpod",
-		"app.kubernetes.io/instance":   dp.Name,
-		"app.kubernetes.io/managed-by": "devpod-operator",
+		labelKeyName:      labelValueName,
+		labelKeyInstance:  dp.Name,
+		labelKeyManagedBy: labelValueManagedBy,
 	}
 }
 
@@ -58,8 +70,8 @@ func standardLabels(dp *appsv1.DevPod) map[string]string {
 // It excludes managed-by because selectors must be immutable.
 func selectorLabels(dp *appsv1.DevPod) map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name":     "devpod",
-		"app.kubernetes.io/instance": dp.Name,
+		labelKeyName:     labelValueName,
+		labelKeyInstance: dp.Name,
 	}
 }
 
@@ -78,7 +90,7 @@ func setAnnotation(obj client.Object, key, value string) {
 // all others get "port-<n>".
 func portName(port int32) string {
 	if port == 22 {
-		return "ssh"
+		return portNameSSH
 	}
 	return fmt.Sprintf("port-%d", port)
 }

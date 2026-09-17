@@ -16,18 +16,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
-// secretHashAnnotation is the annotation key for Secret content hash on pod template.
-// Mirrors the constant that will be defined in production code.
-const secretHashAnnotationKey = "apps.devpod.com/secret-hash"
-
 // =============================================================================
 // reconcileStatefulSet — Happy Path
 // =============================================================================
 
 func TestReconcileStatefulSet_CreatesWhenNotFound(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("testpass")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("testpass")})
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -37,14 +33,14 @@ func TestReconcileStatefulSet_CreatesWhenNotFound(t *testing.T) {
 
 	// Should match buildStatefulSet output (with secret hash injected into pod template)
 	desired := buildStatefulSet(dp)
-	if desired.Spec.Template.ObjectMeta.Annotations == nil {
-		desired.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	if desired.Spec.Template.Annotations == nil {
+		desired.Spec.Template.Annotations = make(map[string]string)
 	}
-	desired.Spec.Template.ObjectMeta.Annotations[secretHashAnnotationKey] = secretDataHash(secret.Data)
+	desired.Spec.Template.Annotations[secretHashAnnotation] = secretDataHash(secret.Data)
 	assert.Equal(t, desired.Spec.Template, sts.Spec.Template)
 
 	// Verify spec-hash annotation
-	assert.Contains(t, sts.Annotations, "devpod.com/spec-hash")
+	assert.Contains(t, sts.Annotations, specHashAnnotation)
 
 	// Verify owner reference
 	require.NotEmpty(t, sts.OwnerReferences)
@@ -53,31 +49,31 @@ func TestReconcileStatefulSet_CreatesWhenNotFound(t *testing.T) {
 
 	// Verify secret-hash on pod template
 	t.Run("secret_hash_on_pod_template", func(t *testing.T) {
-		podAnnotations := sts.Spec.Template.ObjectMeta.Annotations
-		assert.Contains(t, podAnnotations, secretHashAnnotationKey)
-		assert.Equal(t, secretDataHash(secret.Data), podAnnotations[secretHashAnnotationKey])
+		podAnnotations := sts.Spec.Template.Annotations
+		assert.Contains(t, podAnnotations, secretHashAnnotation)
+		assert.Equal(t, secretDataHash(secret.Data), podAnnotations[secretHashAnnotation])
 	})
 }
 
 func TestReconcileStatefulSet_NoOpWhenHashMatches(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("testpass")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("testpass")})
 
 	// Build the desired state to compute the expected hash
 	desired := buildStatefulSet(dp)
-	if desired.Spec.Template.ObjectMeta.Annotations == nil {
-		desired.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	if desired.Spec.Template.Annotations == nil {
+		desired.Spec.Template.Annotations = make(map[string]string)
 	}
-	desired.Spec.Template.ObjectMeta.Annotations[secretHashAnnotationKey] = secretDataHash(secret.Data)
+	desired.Spec.Template.Annotations[secretHashAnnotation] = secretDataHash(secret.Data)
 	expectedHash, _ := specHash(desired.Spec)
 
 	existingSts := &kappsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 			Annotations: map[string]string{
-				"devpod.com/spec-hash": expectedHash,
+				specHashAnnotation: expectedHash,
 			},
 		},
 		Spec: kappsv1.StatefulSetSpec{
@@ -95,26 +91,26 @@ func TestReconcileStatefulSet_NoOpWhenHashMatches(t *testing.T) {
 
 func TestReconcileStatefulSet_UpdatesMutableFieldsOnHashMismatch(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withImage("new-image:v2").
 		withFinalizer().
 		build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("testpass")})
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("testpass")})
 
 	existingSts := &kappsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 			Annotations: map[string]string{
-				"devpod.com/spec-hash": "old-hash",
+				specHashAnnotation: "old-hash",
 			},
 		},
 		Spec: kappsv1.StatefulSetSpec{
 			Replicas:            int32Ptr(1),
-			ServiceName:         "dev1",
+			ServiceName:         testName,
 			PodManagementPolicy: kappsv1.ParallelPodManagement,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"app.kubernetes.io/instance": "dev1"},
+				MatchLabels: map[string]string{labelKeyInstance: testName},
 			},
 		},
 	}
@@ -126,27 +122,27 @@ func TestReconcileStatefulSet_UpdatesMutableFieldsOnHashMismatch(t *testing.T) {
 	require.NotNil(t, sts)
 
 	// Mutable fields should be updated
-	assert.NotEqual(t, "old-hash", sts.Annotations["devpod.com/spec-hash"])
+	assert.NotEqual(t, "old-hash", sts.Annotations[specHashAnnotation])
 
 	// Immutable fields should be preserved
-	assert.Equal(t, "dev1", sts.Spec.ServiceName)
+	assert.Equal(t, testName, sts.Spec.ServiceName)
 	assert.Equal(t, kappsv1.ParallelPodManagement, sts.Spec.PodManagementPolicy)
 }
 
 func TestReconcileStatefulSet_DoesNotModifyImmutableFields(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("testpass")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("testpass")})
 
 	originalSelector := &metav1.LabelSelector{
 		MatchLabels: map[string]string{"original": "selector"},
 	}
 	existingSts := &kappsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 			Annotations: map[string]string{
-				"devpod.com/spec-hash": "different",
+				specHashAnnotation: "different",
 			},
 		},
 		Spec: kappsv1.StatefulSetSpec{
@@ -175,11 +171,11 @@ func TestReconcileStatefulSet_DoesNotModifyImmutableFields(t *testing.T) {
 
 func TestReconcileStatefulSet_NilAnnotations(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("testpass")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("testpass")})
 	existingSts := &kappsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "dev1",
+			Name:        testName,
 			Namespace:   "ns",
 			Annotations: nil,
 		},
@@ -193,12 +189,12 @@ func TestReconcileStatefulSet_NilAnnotations(t *testing.T) {
 	sts, err := r.reconcileStatefulSet(testCtx(), dp, secret)
 	require.NoError(t, err)
 	require.NotNil(t, sts)
-	assert.Contains(t, sts.Annotations, "devpod.com/spec-hash")
+	assert.Contains(t, sts.Annotations, specHashAnnotation)
 
 	// Verify pod template has secret-hash
 	t.Run("pod_template_has_secret_hash", func(t *testing.T) {
-		podAnnotations := sts.Spec.Template.ObjectMeta.Annotations
-		assert.Contains(t, podAnnotations, secretHashAnnotationKey)
+		podAnnotations := sts.Spec.Template.Annotations
+		assert.Contains(t, podAnnotations, secretHashAnnotation)
 	})
 }
 
@@ -208,8 +204,8 @@ func TestReconcileStatefulSet_NilAnnotations(t *testing.T) {
 
 func TestReconcileStatefulSet_GetError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("testpass")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("testpass")})
 	c := interceptingClient(t, interceptor.Funcs{
 		Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			if _, ok := obj.(*kappsv1.StatefulSet); ok {
@@ -227,8 +223,8 @@ func TestReconcileStatefulSet_GetError(t *testing.T) {
 
 func TestReconcileStatefulSet_CreateError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("testpass")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("testpass")})
 	c := interceptingClient(t, interceptor.Funcs{
 		Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			if _, ok := obj.(*kappsv1.StatefulSet); ok {
@@ -252,14 +248,14 @@ func TestReconcileStatefulSet_CreateError(t *testing.T) {
 
 func TestReconcileStatefulSet_UpdateError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("testpass")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("testpass")})
 	existingSts := &kappsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 			Annotations: map[string]string{
-				"devpod.com/spec-hash": "stale",
+				specHashAnnotation: "stale",
 			},
 		},
 		Spec: kappsv1.StatefulSetSpec{Replicas: int32Ptr(1)},
@@ -285,8 +281,8 @@ func TestReconcileStatefulSet_UpdateError(t *testing.T) {
 
 func TestReconcileStatefulSet_SetsOwnerReference(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("testpass")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("testpass")})
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -302,8 +298,8 @@ func TestReconcileStatefulSet_SetsOwnerReference(t *testing.T) {
 
 func TestReconcileStatefulSet_CallsBuildStatefulSet(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("testpass")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("testpass")})
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -313,10 +309,10 @@ func TestReconcileStatefulSet_CallsBuildStatefulSet(t *testing.T) {
 
 	// The actual template should match buildStatefulSet output with the addition of the secret hash annotation
 	desired := buildStatefulSet(dp)
-	if desired.Spec.Template.ObjectMeta.Annotations == nil {
-		desired.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	if desired.Spec.Template.Annotations == nil {
+		desired.Spec.Template.Annotations = make(map[string]string)
 	}
-	desired.Spec.Template.ObjectMeta.Annotations[secretHashAnnotationKey] = secretDataHash(secret.Data)
+	desired.Spec.Template.Annotations[secretHashAnnotation] = secretDataHash(secret.Data)
 	assert.Equal(t, desired.Spec.Template, sts.Spec.Template)
 }
 
@@ -325,8 +321,8 @@ func TestReconcileStatefulSet_CallsBuildStatefulSet(t *testing.T) {
 // =============================================================================
 
 func TestReconcileStatefulSet_SecretHashOnPodTemplate(t *testing.T) {
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"key": []byte("val")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{testSecretKey: []byte("val")})
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -335,17 +331,17 @@ func TestReconcileStatefulSet_SecretHashOnPodTemplate(t *testing.T) {
 	require.NotNil(t, sts)
 
 	// Pod template should have secret-hash annotation
-	podAnnotations := sts.Spec.Template.ObjectMeta.Annotations
-	assert.Contains(t, podAnnotations, secretHashAnnotationKey)
-	assert.Equal(t, secretDataHash(secret.Data), podAnnotations[secretHashAnnotationKey])
+	podAnnotations := sts.Spec.Template.Annotations
+	assert.Contains(t, podAnnotations, secretHashAnnotation)
+	assert.Equal(t, secretDataHash(secret.Data), podAnnotations[secretHashAnnotation])
 
 	// StatefulSet metadata should NOT have secret-hash annotation
-	assert.NotContains(t, sts.ObjectMeta.Annotations, secretHashAnnotationKey)
+	assert.NotContains(t, sts.Annotations, secretHashAnnotation)
 }
 
 func TestReconcileStatefulSet_SecretHashInjectedBeforeSpecHash(t *testing.T) {
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("testpass123")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("testpass123")})
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -356,17 +352,17 @@ func TestReconcileStatefulSet_SecretHashInjectedBeforeSpecHash(t *testing.T) {
 	// Verify the spec-hash captures the secret hash:
 	// Build the desired manually to verify
 	desired := buildStatefulSet(dp)
-	if desired.Spec.Template.ObjectMeta.Annotations == nil {
-		desired.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	if desired.Spec.Template.Annotations == nil {
+		desired.Spec.Template.Annotations = make(map[string]string)
 	}
-	desired.Spec.Template.ObjectMeta.Annotations[secretHashAnnotationKey] = secretDataHash(secret.Data)
+	desired.Spec.Template.Annotations[secretHashAnnotation] = secretDataHash(secret.Data)
 	expectedHash, err := specHash(desired.Spec)
 	require.NoError(t, err)
-	assert.Equal(t, expectedHash, sts.Annotations["devpod.com/spec-hash"])
+	assert.Equal(t, expectedHash, sts.Annotations[specHashAnnotation])
 }
 
 func TestReconcileStatefulSet_SecretChangeTriggersUpdate(t *testing.T) {
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 
 	// Simulate existing StatefulSet created with old secret data
 	oldSecretData := map[string][]byte{"pw": []byte("old")}
@@ -374,15 +370,15 @@ func TestReconcileStatefulSet_SecretChangeTriggersUpdate(t *testing.T) {
 
 	// Build existing StatefulSet with old secret hash in pod template
 	existingSts := buildStatefulSet(dp)
-	if existingSts.Spec.Template.ObjectMeta.Annotations == nil {
-		existingSts.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	if existingSts.Spec.Template.Annotations == nil {
+		existingSts.Spec.Template.Annotations = make(map[string]string)
 	}
-	existingSts.Spec.Template.ObjectMeta.Annotations[secretHashAnnotationKey] = oldSecretHash
+	existingSts.Spec.Template.Annotations[secretHashAnnotation] = oldSecretHash
 	oldSpecHash, _ := specHash(existingSts.Spec)
-	setAnnotation(existingSts, "devpod.com/spec-hash", oldSpecHash)
+	setAnnotation(existingSts, specHashAnnotation, oldSpecHash)
 
 	// New secret with changed data
-	newSecret := newSecretWithData("dev1", "ns", map[string][]byte{"pw": []byte("new")})
+	newSecret := newSecretWithData(map[string][]byte{"pw": []byte("new")})
 
 	c := fakeClientWith(t, dp, existingSts)
 	r := newTestReconciler(c)
@@ -391,23 +387,23 @@ func TestReconcileStatefulSet_SecretChangeTriggersUpdate(t *testing.T) {
 	require.NotNil(t, sts)
 
 	// Pod template annotation should reflect new secret data
-	assert.Equal(t, secretDataHash(newSecret.Data), sts.Spec.Template.ObjectMeta.Annotations[secretHashAnnotationKey])
+	assert.Equal(t, secretDataHash(newSecret.Data), sts.Spec.Template.Annotations[secretHashAnnotation])
 	// Spec-hash should be updated
-	assert.NotEqual(t, oldSpecHash, sts.Annotations["devpod.com/spec-hash"])
+	assert.NotEqual(t, oldSpecHash, sts.Annotations[specHashAnnotation])
 }
 
 func TestReconcileStatefulSet_LegacyStatefulSetWithoutSecretHash(t *testing.T) {
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("validpass1")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("validpass1")})
 
 	// Simulate a legacy StatefulSet that was created before the secret-hash feature.
 	// It has a spec-hash but no secret-hash in pod template annotations.
 	legacySts := &kappsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 			Annotations: map[string]string{
-				"devpod.com/spec-hash": "legacy-hash-without-secret",
+				specHashAnnotation: "legacy-hash-without-secret",
 			},
 		},
 		Spec: kappsv1.StatefulSetSpec{
@@ -422,15 +418,15 @@ func TestReconcileStatefulSet_LegacyStatefulSetWithoutSecretHash(t *testing.T) {
 	require.NotNil(t, sts)
 
 	// Update should be issued; pod template now contains secret-hash
-	podAnnotations := sts.Spec.Template.ObjectMeta.Annotations
-	assert.Contains(t, podAnnotations, secretHashAnnotationKey)
+	podAnnotations := sts.Spec.Template.Annotations
+	assert.Contains(t, podAnnotations, secretHashAnnotation)
 	// Spec-hash should be refreshed
-	assert.NotEqual(t, "legacy-hash-without-secret", sts.Annotations["devpod.com/spec-hash"])
+	assert.NotEqual(t, "legacy-hash-without-secret", sts.Annotations[specHashAnnotation])
 }
 
 func TestReconcileStatefulSet_CallsSecretDataHash(t *testing.T) {
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newSecretWithData("dev1", "ns", map[string][]byte{"ubuntu-password": []byte("secret123")})
+	dp := newDevPod().withFinalizer().build()
+	secret := newSecretWithData(map[string][]byte{secretKeyPassword: []byte("secret123")})
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -440,6 +436,6 @@ func TestReconcileStatefulSet_CallsSecretDataHash(t *testing.T) {
 
 	// The pod template annotation should equal the output of secretDataHash(secret.Data)
 	expectedHash := secretDataHash(secret.Data)
-	actualHash := sts.Spec.Template.ObjectMeta.Annotations[secretHashAnnotationKey]
+	actualHash := sts.Spec.Template.Annotations[secretHashAnnotation]
 	assert.Equal(t, expectedHash, actualHash)
 }

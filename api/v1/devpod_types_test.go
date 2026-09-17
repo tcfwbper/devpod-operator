@@ -94,7 +94,7 @@ func TestSchemeRegistration_DevPodRegistered(t *testing.T) {
 	require.NoError(t, err)
 
 	gvk := schema.GroupVersionKind{
-		Group:   "apps.devpod.com",
+		Group:   groupName,
 		Version: "v1",
 		Kind:    "DevPod",
 	}
@@ -110,7 +110,7 @@ func TestSchemeRegistration_DevPodListRegistered(t *testing.T) {
 	require.NoError(t, err)
 
 	gvk := schema.GroupVersionKind{
-		Group:   "apps.devpod.com",
+		Group:   groupName,
 		Version: "v1",
 		Kind:    "DevPodList",
 	}

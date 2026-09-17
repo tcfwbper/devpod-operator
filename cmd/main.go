@@ -42,6 +42,8 @@ import (
 	// +kubebuilder:scaffold:imports
 )
 
+const protoHTTP11 = "http/1.1"
+
 var (
 	version  = "dev"
 	scheme   = runtime.NewScheme()
@@ -104,7 +106,7 @@ func registerFlags(fs *flag.FlagSet) *flagConfig {
 // disableHTTP2 restricts the given TLS config to HTTP/1.1 only.
 func disableHTTP2(c *tls.Config) {
 	setupLog.Info("Disabling HTTP/2")
-	c.NextProtos = []string{"http/1.1"}
+	c.NextProtos = []string{protoHTTP11}
 }
 
 // runDeps holds injectable dependencies for the bootstrap sequence.
@@ -140,7 +142,9 @@ func run(cfg *flagConfig, deps runDeps) {
 
 	if len(cfg.webhookCertPath) > 0 {
 		setupLog.Info("Initializing webhook certificate watcher using provided certificates",
-			"webhook-cert-path", cfg.webhookCertPath, "webhook-cert-name", cfg.webhookCertName, "webhook-cert-key", cfg.webhookCertKey)
+			"webhook-cert-path", cfg.webhookCertPath,
+			"webhook-cert-name", cfg.webhookCertName,
+			"webhook-cert-key", cfg.webhookCertKey)
 
 		webhookServerOptions.CertDir = cfg.webhookCertPath
 		webhookServerOptions.CertName = cfg.webhookCertName
@@ -177,7 +181,9 @@ func run(cfg *flagConfig, deps runDeps) {
 	// - [PROMETHEUS-WITH-CERTS] at config/prometheus/kustomization.yaml for TLS certification.
 	if len(cfg.metricsCertPath) > 0 {
 		setupLog.Info("Initializing metrics certificate watcher using provided certificates",
-			"metrics-cert-path", cfg.metricsCertPath, "metrics-cert-name", cfg.metricsCertName, "metrics-cert-key", cfg.metricsCertKey)
+			"metrics-cert-path", cfg.metricsCertPath,
+			"metrics-cert-name", cfg.metricsCertName,
+			"metrics-cert-key", cfg.metricsCertKey)
 
 		metricsServerOptions.CertDir = cfg.metricsCertPath
 		metricsServerOptions.CertName = cfg.metricsCertName

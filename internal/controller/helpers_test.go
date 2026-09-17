@@ -70,7 +70,7 @@ func TestSpecHash_MarshalError(t *testing.T) {
 // =============================================================================
 
 func TestSecretDataHash_DeterministicOutput(t *testing.T) {
-	data := map[string][]byte{"key": []byte("val")}
+	data := map[string][]byte{testSecretKey: []byte("val")}
 	hash1 := secretDataHash(data)
 	hash2 := secretDataHash(data)
 	assert.Equal(t, hash1, hash2, "same input must produce same hash")
@@ -85,8 +85,8 @@ func TestSecretDataHash_Returns32HexChars(t *testing.T) {
 }
 
 func TestSecretDataHash_DifferentDataProducesDifferentHashes(t *testing.T) {
-	data1 := map[string][]byte{"key": []byte("value1")}
-	data2 := map[string][]byte{"key": []byte("value2")}
+	data1 := map[string][]byte{testSecretKey: []byte("value1")}
+	data2 := map[string][]byte{testSecretKey: []byte("value2")}
 	hash1 := secretDataHash(data1)
 	hash2 := secretDataHash(data2)
 	assert.NotEqual(t, hash1, hash2, "different data must produce different hashes")
@@ -119,19 +119,19 @@ func TestSecretDataHash_EmptyMap(t *testing.T) {
 func TestStandardLabels_ContainsExpectedKeys(t *testing.T) {
 
 	dp := &appsv1.DevPod{
-		ObjectMeta: metav1.ObjectMeta{Name: "my-pod"},
+		ObjectMeta: metav1.ObjectMeta{Name: testPodName},
 	}
 	labels := standardLabels(dp)
 
-	assert.Equal(t, "devpod", labels["app.kubernetes.io/name"])
-	assert.Equal(t, "my-pod", labels["app.kubernetes.io/instance"])
+	assert.Equal(t, labelValueName, labels[labelKeyName])
+	assert.Equal(t, testPodName, labels[labelKeyInstance])
 	assert.Equal(t, "devpod-operator", labels["app.kubernetes.io/managed-by"])
 }
 
 func TestStandardLabels_ReturnsNewMapEachCall(t *testing.T) {
 
 	dp := &appsv1.DevPod{
-		ObjectMeta: metav1.ObjectMeta{Name: "my-pod"},
+		ObjectMeta: metav1.ObjectMeta{Name: testPodName},
 	}
 	labels1 := standardLabels(dp)
 	labels2 := standardLabels(dp)
@@ -151,12 +151,12 @@ func TestStandardLabels_ReturnsNewMapEachCall(t *testing.T) {
 func TestSelectorLabels_ContainsSubsetOfStandard(t *testing.T) {
 
 	dp := &appsv1.DevPod{
-		ObjectMeta: metav1.ObjectMeta{Name: "my-pod"},
+		ObjectMeta: metav1.ObjectMeta{Name: testPodName},
 	}
 	labels := selectorLabels(dp)
 
-	assert.Equal(t, "devpod", labels["app.kubernetes.io/name"])
-	assert.Equal(t, "my-pod", labels["app.kubernetes.io/instance"])
+	assert.Equal(t, labelValueName, labels[labelKeyName])
+	assert.Equal(t, testPodName, labels[labelKeyInstance])
 	_, hasManagedBy := labels["app.kubernetes.io/managed-by"]
 	assert.False(t, hasManagedBy, "selectorLabels must not contain managed-by")
 }
@@ -164,7 +164,7 @@ func TestSelectorLabels_ContainsSubsetOfStandard(t *testing.T) {
 func TestSelectorLabels_ReturnsNewMapEachCall(t *testing.T) {
 
 	dp := &appsv1.DevPod{
-		ObjectMeta: metav1.ObjectMeta{Name: "my-pod"},
+		ObjectMeta: metav1.ObjectMeta{Name: testPodName},
 	}
 	labels1 := selectorLabels(dp)
 	labels2 := selectorLabels(dp)
@@ -221,7 +221,7 @@ func TestSetAnnotation_NilAnnotationsMap(t *testing.T) {
 
 func TestPortName_SSH(t *testing.T) {
 
-	assert.Equal(t, "ssh", portName(22))
+	assert.Equal(t, portNameSSH, portName(22))
 }
 
 func TestPortName_NonSSH(t *testing.T) {

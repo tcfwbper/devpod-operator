@@ -24,10 +24,10 @@ func (r *DevPodReconciler) reconcileStatefulSet(ctx context.Context, dp *appsv1.
 	// Inject secret-hash into pod template annotations before computing spec-hash.
 	// This ensures that when Secret content changes, the pod template changes,
 	// causing Kubernetes to roll the pods.
-	if desired.Spec.Template.ObjectMeta.Annotations == nil {
-		desired.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	if desired.Spec.Template.Annotations == nil {
+		desired.Spec.Template.Annotations = make(map[string]string)
 	}
-	desired.Spec.Template.ObjectMeta.Annotations[secretHashAnnotation] = secretDataHash(secret.Data)
+	desired.Spec.Template.Annotations[secretHashAnnotation] = secretDataHash(secret.Data)
 
 	// Compute spec-hash (now captures secret hash via template annotations)
 	hash, err := specHash(desired.Spec)

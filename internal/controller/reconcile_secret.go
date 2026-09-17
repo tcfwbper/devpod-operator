@@ -17,7 +17,7 @@ import (
 const minPasswordLength = 8
 
 // reconcileSecret ensures an owned Secret exists for the DevPod with the
-// "ubuntu-password" key. It never overwrites an existing password value.
+// secretKeyPassword key. It never overwrites an existing password value.
 func (r *DevPodReconciler) reconcileSecret(ctx context.Context, dp *appsv1.DevPod) (*corev1.Secret, error) {
 	// Construct desired Secret
 	desired := &corev1.Secret{
@@ -28,7 +28,7 @@ func (r *DevPodReconciler) reconcileSecret(ctx context.Context, dp *appsv1.DevPo
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
-			"ubuntu-password": {},
+			secretKeyPassword: {},
 		},
 	}
 
@@ -54,8 +54,8 @@ func (r *DevPodReconciler) reconcileSecret(ctx context.Context, dp *appsv1.DevPo
 	if existing.Data == nil {
 		existing.Data = map[string][]byte{}
 	}
-	if _, ok := existing.Data["ubuntu-password"]; !ok {
-		existing.Data["ubuntu-password"] = []byte("")
+	if _, ok := existing.Data[secretKeyPassword]; !ok {
+		existing.Data[secretKeyPassword] = []byte("")
 		if err := r.Update(ctx, existing); err != nil {
 			return nil, fmt.Errorf("updating Secret to restore key: %w", err)
 		}

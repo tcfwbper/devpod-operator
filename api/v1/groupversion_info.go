@@ -25,10 +25,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+const groupName = "apps.devpod.com"
+
 var (
 	// SchemeGroupVersion is group version used to register these objects.
 	// This name is used by applyconfiguration generators (e.g. controller-gen).
-	SchemeGroupVersion = schema.GroupVersion{Group: "apps.devpod.com", Version: "v1"}
+	SchemeGroupVersion = schema.GroupVersion{Group: groupName, Version: "v1"}
 
 	// GroupVersion is an alias for SchemeGroupVersion, for backward compatibility.
 	GroupVersion = SchemeGroupVersion

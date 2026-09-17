@@ -16,6 +16,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
+const (
+	testName         = "dev1"
+	testNamespace    = "ns"
+	testStorageClass = "standard"
+	testPodName      = "my-pod"
+	testSecretKey    = "key"
+	testWorkspacePVC = "workspace-dev1-0"
+)
+
 // testScheme returns a runtime.Scheme with all required types registered.
 func testScheme() *runtime.Scheme {
 	s := runtime.NewScheme()
@@ -37,7 +46,7 @@ type devPodBuilder struct {
 	dp *appsv1.DevPod
 }
 
-func newDevPod(name, namespace string) *devPodBuilder {
+func newDevPod() *devPodBuilder {
 	return &devPodBuilder{
 		dp: &appsv1.DevPod{
 			TypeMeta: metav1.TypeMeta{
@@ -45,8 +54,8 @@ func newDevPod(name, namespace string) *devPodBuilder {
 				Kind:       "DevPod",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       name,
-				Namespace:  namespace,
+				Name:       testName,
+				Namespace:  testNamespace,
 				Generation: 1,
 			},
 			Spec: appsv1.DevPodSpec{
@@ -56,7 +65,7 @@ func newDevPod(name, namespace string) *devPodBuilder {
 					Username: "testuser",
 				},
 				Persistence: appsv1.PersistenceSpec{
-					StorageClass:  "standard",
+					StorageClass:  testStorageClass,
 					Size:          quantityPtr(resource.MustParse("50Gi")),
 					ReclaimPolicy: appsv1.PVCReclaimRetain,
 				},
@@ -73,16 +82,6 @@ func newDevPod(name, namespace string) *devPodBuilder {
 			},
 		},
 	}
-}
-
-func (b *devPodBuilder) withName(name string) *devPodBuilder {
-	b.dp.Name = name
-	return b
-}
-
-func (b *devPodBuilder) withNamespace(ns string) *devPodBuilder {
-	b.dp.Namespace = ns
-	return b
 }
 
 func (b *devPodBuilder) withUsername(username string) *devPodBuilder {
@@ -169,26 +168,26 @@ func (b *devPodBuilder) build() *appsv1.DevPod {
 // Secret fixture builder
 // --------------------------------------------------------------------------
 
-func newPasswordSecret(name, namespace, password string) *corev1.Secret {
+func newPasswordSecret(password string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
-			"ubuntu-password": []byte(password),
+			secretKeyPassword: []byte(password),
 		},
 	}
 }
 
 // newSecretWithData creates a Secret with arbitrary .Data for testing
 // secretDataHash and reconcileStatefulSet secret-hash injection.
-func newSecretWithData(name, namespace string, data map[string][]byte) *corev1.Secret {
+func newSecretWithData(data map[string][]byte) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: data,
@@ -239,10 +238,6 @@ func boolPtr(b bool) *bool {
 }
 
 func int32Ptr(i int32) *int32 {
-	return &i
-}
-
-func int64Ptr(i int64) *int64 {
 	return &i
 }
 

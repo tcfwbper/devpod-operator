@@ -22,7 +22,7 @@ import (
 
 func TestReconcileServiceAccount_CreatesWhenNotFound(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -32,7 +32,7 @@ func TestReconcileServiceAccount_CreatesWhenNotFound(t *testing.T) {
 	// Verify created ServiceAccount
 	var sa corev1.ServiceAccount
 	require.NoError(t, c.Get(testCtx(), client.ObjectKeyFromObject(dp), &sa))
-	assert.Equal(t, "dev1", sa.Name)
+	assert.Equal(t, testName, sa.Name)
 	assert.Equal(t, "ns", sa.Namespace)
 	assert.NotNil(t, sa.AutomountServiceAccountToken)
 	assert.False(t, *sa.AutomountServiceAccountToken)
@@ -45,11 +45,11 @@ func TestReconcileServiceAccount_CreatesWhenNotFound(t *testing.T) {
 
 func TestReconcileServiceAccount_NoOpWhenCorrect(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	existingSA := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		AutomountServiceAccountToken: boolPtr(false),
 	}
@@ -62,11 +62,11 @@ func TestReconcileServiceAccount_NoOpWhenCorrect(t *testing.T) {
 
 func TestReconcileServiceAccount_FixesNilAutomount(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	existingSA := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		AutomountServiceAccountToken: nil,
 	}
@@ -85,11 +85,11 @@ func TestReconcileServiceAccount_FixesNilAutomount(t *testing.T) {
 
 func TestReconcileServiceAccount_FixesTrueAutomount(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	existingSA := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		AutomountServiceAccountToken: boolPtr(true),
 	}
@@ -111,7 +111,7 @@ func TestReconcileServiceAccount_FixesTrueAutomount(t *testing.T) {
 
 func TestReconcileServiceAccount_GetError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
 		Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			if _, ok := obj.(*corev1.ServiceAccount); ok {
@@ -128,7 +128,7 @@ func TestReconcileServiceAccount_GetError(t *testing.T) {
 
 func TestReconcileServiceAccount_CreateError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
 		Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			if _, ok := obj.(*corev1.ServiceAccount); ok {
@@ -151,11 +151,11 @@ func TestReconcileServiceAccount_CreateError(t *testing.T) {
 
 func TestReconcileServiceAccount_UpdateError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	existingSA := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		AutomountServiceAccountToken: nil, // triggers update
 	}
@@ -179,7 +179,7 @@ func TestReconcileServiceAccount_UpdateError(t *testing.T) {
 
 func TestReconcileServiceAccount_SetsOwnerReference(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 

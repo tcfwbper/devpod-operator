@@ -32,16 +32,16 @@ func buildStatefulSet(dp *appsv1.DevPod) *kappsv1.StatefulSet {
 
 	// Workspace volume mount for main container
 	workspaceMount := corev1.VolumeMount{
-		Name:      "workspace",
+		Name:      volumeNameWorkspace,
 		MountPath: fmt.Sprintf("/home/%s", username),
-		SubPath:   "workspace",
+		SubPath:   volumeNameWorkspace,
 	}
 
 	// Main devpod container
 	replicas := int32(1)
 	probe := sshProbe()
 	devpodContainer := corev1.Container{
-		Name:            "devpod",
+		Name:            containerNameDevpod,
 		Image:           dp.Spec.Image,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		SecurityContext: containerSecurityContext(false),
@@ -58,7 +58,7 @@ func buildStatefulSet(dp *appsv1.DevPod) *kappsv1.StatefulSet {
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: dp.Name,
 						},
-						Key: "ubuntu-password",
+						Key: secretKeyPassword,
 					},
 				},
 			},
@@ -108,16 +108,16 @@ func buildStatefulSet(dp *appsv1.DevPod) *kappsv1.StatefulSet {
 		Resources:       resourcePreset("100m", "128Mi", "150m", "192Mi"),
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      "workspace",
+				Name:      volumeNameWorkspace,
 				MountPath: "/tmp/workspace",
-				SubPath:   "workspace",
+				SubPath:   volumeNameWorkspace,
 			},
 		},
 	}
 
 	// Volume claim templates
 	volumeClaimTemplates := []corev1.PersistentVolumeClaim{
-		volumeClaim(dp, "workspace", dp.Spec.Persistence.Size),
+		volumeClaim(dp, volumeNameWorkspace, dp.Spec.Persistence.Size),
 	}
 	if dockerEnabled {
 		volumeClaimTemplates = append(volumeClaimTemplates,
@@ -176,28 +176,28 @@ func postStartScript(dp *appsv1.DevPod) string {
 	var sb strings.Builder
 
 	// Account rename
-	sb.WriteString(fmt.Sprintf("usermod -l %s user\n", username))
-	sb.WriteString(fmt.Sprintf("usermod -d /home/%s -m %s\n", username, username))
-	sb.WriteString(fmt.Sprintf("groupmod -n %s user\n", username))
-	sb.WriteString(fmt.Sprintf("usermod -g %s %s\n", username, username))
-	sb.WriteString(fmt.Sprintf("chown -R %s /home/%s\n", username, username))
-	sb.WriteString(fmt.Sprintf("chgrp -R %s /home/%s\n", username, username))
+	fmt.Fprintf(&sb, "usermod -l %s user\n", username)
+	fmt.Fprintf(&sb, "usermod -d /home/%s -m %s\n", username, username)
+	fmt.Fprintf(&sb, "groupmod -n %s user\n", username)
+	fmt.Fprintf(&sb, "usermod -g %s %s\n", username, username)
+	fmt.Fprintf(&sb, "chown -R %s /home/%s\n", username, username)
+	fmt.Fprintf(&sb, "chgrp -R %s /home/%s\n", username, username)
 
 	// Password application
-	sb.WriteString(fmt.Sprintf("echo '%s:'\"$UBUNTU_PASSWORD\" | chpasswd\n", username))
+	fmt.Fprintf(&sb, "echo '%s:'\"$UBUNTU_PASSWORD\" | chpasswd\n", username)
 
 	// Apt packages
 	if len(dp.Spec.Packages.Apt) > 0 {
 		sb.WriteString("export DEBIAN_FRONTEND=noninteractive\n")
 		sb.WriteString("apt-get update\n")
-		sb.WriteString(fmt.Sprintf("apt-get install -y%s || true\n", shellQuoteAll(dp.Spec.Packages.Apt)))
+		fmt.Fprintf(&sb, "apt-get install -y%s || true\n", shellQuoteAll(dp.Spec.Packages.Apt))
 		sb.WriteString("apt-get clean\n")
 		sb.WriteString("unset DEBIAN_FRONTEND\n")
 	}
 
 	// Pip packages
 	if len(dp.Spec.Packages.Pip) > 0 {
-		sb.WriteString(fmt.Sprintf("pip install --no-cache-dir%s || true\n", shellQuoteAll(dp.Spec.Packages.Pip)))
+		fmt.Fprintf(&sb, "pip install --no-cache-dir%s || true\n", shellQuoteAll(dp.Spec.Packages.Pip))
 	}
 
 	return sb.String()
@@ -292,7 +292,7 @@ func shellQuoteAll(pkgs []string) string {
 	}
 	var sb strings.Builder
 	for _, pkg := range pkgs {
-		sb.WriteString(fmt.Sprintf(" %q", pkg))
+		fmt.Fprintf(&sb, " %q", pkg)
 	}
 	return sb.String()
 }

@@ -196,13 +196,13 @@ func TestInit_RegistersDevPodTypes(t *testing.T) {
 func TestDisableHTTP2_SetsNextProtos(t *testing.T) {
 	cfg := &tls.Config{}
 	disableHTTP2(cfg)
-	assert.Equal(t, []string{"http/1.1"}, cfg.NextProtos)
+	assert.Equal(t, []string{protoHTTP11}, cfg.NextProtos)
 }
 
 func TestDisableHTTP2_OverwritesExistingNextProtos(t *testing.T) {
-	cfg := &tls.Config{NextProtos: []string{"h2", "http/1.1"}}
+	cfg := &tls.Config{NextProtos: []string{"h2", protoHTTP11}}
 	disableHTTP2(cfg)
-	assert.Equal(t, []string{"http/1.1"}, cfg.NextProtos)
+	assert.Equal(t, []string{protoHTTP11}, cfg.NextProtos)
 }
 
 // =============================================================================
@@ -225,7 +225,7 @@ func TestMain_HTTP2DisabledByDefault(t *testing.T) {
 	for _, fn := range captured.opts.Metrics.TLSOpts {
 		fn(tlsCfg)
 	}
-	assert.Equal(t, []string{"http/1.1"}, tlsCfg.NextProtos)
+	assert.Equal(t, []string{protoHTTP11}, tlsCfg.NextProtos)
 }
 
 func TestMain_HTTP2EnabledExplicitly(t *testing.T) {

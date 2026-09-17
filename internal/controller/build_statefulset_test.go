@@ -18,7 +18,7 @@ import (
 // =============================================================================
 
 func standardTestDevPod() *appsv1.DevPod {
-	return newDevPod("dev1", "ns").
+	return newDevPod().
 		withImage("img:1").
 		withUsername("alice").
 		withDockerEnabled(true).
@@ -31,10 +31,10 @@ func TestBuildStatefulSet_BasicStructure(t *testing.T) {
 	dp := standardTestDevPod()
 	sts := buildStatefulSet(dp)
 
-	assert.Equal(t, "dev1", sts.Name)
+	assert.Equal(t, testName, sts.Name)
 	assert.Equal(t, "ns", sts.Namespace)
 	assert.Equal(t, int32(1), *sts.Spec.Replicas)
-	assert.Equal(t, "dev1", sts.Spec.ServiceName)
+	assert.Equal(t, testName, sts.Spec.ServiceName)
 	assert.Equal(t, kappsv1.ParallelPodManagement, sts.Spec.PodManagementPolicy)
 	assert.Equal(t, kappsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
 }
@@ -74,7 +74,7 @@ func TestBuildStatefulSet_PodServiceAccount(t *testing.T) {
 	sts := buildStatefulSet(dp)
 
 	podSpec := sts.Spec.Template.Spec
-	assert.Equal(t, "dev1", podSpec.ServiceAccountName)
+	assert.Equal(t, testName, podSpec.ServiceAccountName)
 	assert.Equal(t, false, *podSpec.AutomountServiceAccountToken)
 	assert.True(t, *podSpec.EnableServiceLinks)
 }
@@ -93,12 +93,12 @@ func TestBuildStatefulSet_TerminationGracePeriod(t *testing.T) {
 
 func TestBuildStatefulSet_DevpodContainer_Basic(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withImage("myimg:v1").build()
+	dp := newDevPod().withImage("myimg:v1").build()
 	sts := buildStatefulSet(dp)
 
 	require.NotEmpty(t, sts.Spec.Template.Spec.Containers)
 	c := sts.Spec.Template.Spec.Containers[0]
-	assert.Equal(t, "devpod", c.Name)
+	assert.Equal(t, labelValueName, c.Name)
 	assert.Equal(t, "myimg:v1", c.Image)
 	assert.Equal(t, corev1.PullIfNotPresent, c.ImagePullPolicy)
 }
@@ -120,7 +120,7 @@ func TestBuildStatefulSet_DevpodContainer_SecurityContext(t *testing.T) {
 
 func TestBuildStatefulSet_DevpodContainer_Ports(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withNodePorts(
 			appsv1.NodePortMapping{Src: 22, Dest: 30022},
 			appsv1.NodePortMapping{Src: 8080, Dest: 30080},
@@ -129,7 +129,7 @@ func TestBuildStatefulSet_DevpodContainer_Ports(t *testing.T) {
 
 	c := sts.Spec.Template.Spec.Containers[0]
 	require.Len(t, c.Ports, 2)
-	assert.Equal(t, "ssh", c.Ports[0].Name)
+	assert.Equal(t, portNameSSH, c.Ports[0].Name)
 	assert.Equal(t, int32(22), c.Ports[0].ContainerPort)
 	assert.Equal(t, corev1.ProtocolTCP, c.Ports[0].Protocol)
 	assert.Equal(t, "port-8080", c.Ports[1].Name)
@@ -170,7 +170,7 @@ func TestBuildStatefulSet_DevpodContainer_Resources(t *testing.T) {
 
 func TestBuildStatefulSet_DevpodContainer_VolumeMount(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withUsername("bob").build()
+	dp := newDevPod().withUsername("bob").build()
 	sts := buildStatefulSet(dp)
 
 	c := sts.Spec.Template.Spec.Containers[0]
@@ -183,7 +183,7 @@ func TestBuildStatefulSet_DevpodContainer_VolumeMount(t *testing.T) {
 
 func TestBuildStatefulSet_DevpodContainer_EnvPassword(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").build()
+	dp := newDevPod().build()
 	sts := buildStatefulSet(dp)
 
 	c := sts.Spec.Template.Spec.Containers[0]
@@ -195,8 +195,8 @@ func TestBuildStatefulSet_DevpodContainer_EnvPassword(t *testing.T) {
 			found = true
 			require.NotNil(t, env.ValueFrom)
 			require.NotNil(t, env.ValueFrom.SecretKeyRef)
-			assert.Equal(t, "dev1", env.ValueFrom.SecretKeyRef.LocalObjectReference.Name)
-			assert.Equal(t, "ubuntu-password", env.ValueFrom.SecretKeyRef.Key)
+			assert.Equal(t, testName, env.ValueFrom.SecretKeyRef.Name)
+			assert.Equal(t, secretKeyPassword, env.ValueFrom.SecretKeyRef.Key)
 		}
 	}
 	assert.True(t, found, "UBUNTU_PASSWORD env var must be present")
@@ -224,7 +224,7 @@ func TestBuildStatefulSet_DevpodContainer_Lifecycle(t *testing.T) {
 
 func TestBuildStatefulSet_DockerSidecar_Present(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withDockerEnabled(true).
 		withDockerImage("docker:dind").
 		build()
@@ -239,7 +239,7 @@ func TestBuildStatefulSet_DockerSidecar_Present(t *testing.T) {
 
 func TestBuildStatefulSet_DockerSidecar_Privileged(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withDockerEnabled(true).build()
+	dp := newDevPod().withDockerEnabled(true).build()
 	sts := buildStatefulSet(dp)
 
 	dc := sts.Spec.Template.Spec.Containers[1]
@@ -250,7 +250,7 @@ func TestBuildStatefulSet_DockerSidecar_Privileged(t *testing.T) {
 
 func TestBuildStatefulSet_DockerSidecar_Command(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withDockerEnabled(true).build()
+	dp := newDevPod().withDockerEnabled(true).build()
 	sts := buildStatefulSet(dp)
 
 	dc := sts.Spec.Template.Spec.Containers[1]
@@ -259,7 +259,7 @@ func TestBuildStatefulSet_DockerSidecar_Command(t *testing.T) {
 
 func TestBuildStatefulSet_DockerSidecar_Port(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withDockerEnabled(true).build()
+	dp := newDevPod().withDockerEnabled(true).build()
 	sts := buildStatefulSet(dp)
 
 	dc := sts.Spec.Template.Spec.Containers[1]
@@ -270,7 +270,7 @@ func TestBuildStatefulSet_DockerSidecar_Port(t *testing.T) {
 
 func TestBuildStatefulSet_DockerSidecar_Resources(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withDockerEnabled(true).build()
+	dp := newDevPod().withDockerEnabled(true).build()
 	sts := buildStatefulSet(dp)
 
 	dc := sts.Spec.Template.Spec.Containers[1]
@@ -284,7 +284,7 @@ func TestBuildStatefulSet_DockerSidecar_Resources(t *testing.T) {
 
 func TestBuildStatefulSet_DockerSidecar_VolumeMount(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withDockerEnabled(true).build()
+	dp := newDevPod().withDockerEnabled(true).build()
 	sts := buildStatefulSet(dp)
 
 	dc := sts.Spec.Template.Spec.Containers[1]
@@ -295,11 +295,11 @@ func TestBuildStatefulSet_DockerSidecar_VolumeMount(t *testing.T) {
 
 func TestBuildStatefulSet_DockerDisabled_NoSidecar(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withDockerEnabled(false).build()
+	dp := newDevPod().withDockerEnabled(false).build()
 	sts := buildStatefulSet(dp)
 
 	require.Len(t, sts.Spec.Template.Spec.Containers, 1)
-	assert.Equal(t, "devpod", sts.Spec.Template.Spec.Containers[0].Name)
+	assert.Equal(t, labelValueName, sts.Spec.Template.Spec.Containers[0].Name)
 }
 
 // =============================================================================
@@ -308,7 +308,7 @@ func TestBuildStatefulSet_DockerDisabled_NoSidecar(t *testing.T) {
 
 func TestBuildStatefulSet_InitContainer(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withInitImage("init:1").build()
+	dp := newDevPod().withInitImage("init:1").build()
 	sts := buildStatefulSet(dp)
 
 	require.NotEmpty(t, sts.Spec.Template.Spec.InitContainers)
@@ -344,8 +344,8 @@ func TestBuildStatefulSet_InitContainer_Resources(t *testing.T) {
 
 func TestBuildStatefulSet_VolumeClaimWorkspace(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
-		withStorageClass("standard").
+	dp := newDevPod().
+		withStorageClass(testStorageClass).
 		withStorageSize("100Gi").
 		build()
 	sts := buildStatefulSet(dp)
@@ -356,14 +356,14 @@ func TestBuildStatefulSet_VolumeClaimWorkspace(t *testing.T) {
 	assert.Equal(t, selectorLabels(dp), vct.Labels)
 	require.NotEmpty(t, vct.Spec.AccessModes)
 	assert.Equal(t, corev1.ReadWriteOnce, vct.Spec.AccessModes[0])
-	assert.Equal(t, "standard", *vct.Spec.StorageClassName)
+	assert.Equal(t, testStorageClass, *vct.Spec.StorageClassName)
 	storage := vct.Spec.Resources.Requests[corev1.ResourceStorage]
 	assert.Equal(t, resource.MustParse("100Gi"), storage)
 }
 
 func TestBuildStatefulSet_VolumeClaimDocker(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withDockerEnabled(true).
 		withDockerStorageSize("200Gi").
 		build()
@@ -378,7 +378,7 @@ func TestBuildStatefulSet_VolumeClaimDocker(t *testing.T) {
 
 func TestBuildStatefulSet_VolumeClaimDocker_Absent(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withDockerEnabled(false).build()
+	dp := newDevPod().withDockerEnabled(false).build()
 	sts := buildStatefulSet(dp)
 
 	require.Len(t, sts.Spec.VolumeClaimTemplates, 1)
@@ -391,7 +391,7 @@ func TestBuildStatefulSet_VolumeClaimDocker_Absent(t *testing.T) {
 
 func TestPostStartScript_AccountRename(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withUsername("alice").build()
+	dp := newDevPod().withUsername("alice").build()
 	script := postStartScript(dp)
 
 	assert.Contains(t, script, "usermod -l alice")
@@ -404,7 +404,7 @@ func TestPostStartScript_AccountRename(t *testing.T) {
 
 func TestPostStartScript_PasswordApplication(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withUsername("alice").build()
+	dp := newDevPod().withUsername("alice").build()
 	script := postStartScript(dp)
 
 	assert.Contains(t, script, "chpasswd")
@@ -413,7 +413,7 @@ func TestPostStartScript_PasswordApplication(t *testing.T) {
 
 func TestPostStartScript_AptPackages(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withAptPackages("curl", "git").build()
+	dp := newDevPod().withAptPackages("curl", "git").build()
 	script := postStartScript(dp)
 
 	assert.Contains(t, script, "DEBIAN_FRONTEND=noninteractive")
@@ -427,7 +427,7 @@ func TestPostStartScript_AptPackages(t *testing.T) {
 
 func TestPostStartScript_PipPackages(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withPipPackages("numpy", "pandas").build()
+	dp := newDevPod().withPipPackages("numpy", "pandas").build()
 	script := postStartScript(dp)
 
 	assert.Contains(t, script, "pip install --no-cache-dir")
@@ -436,7 +436,7 @@ func TestPostStartScript_PipPackages(t *testing.T) {
 
 func TestPostStartScript_NoPackages(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withAptPackages().
 		withPipPackages().
 		build()
@@ -448,7 +448,7 @@ func TestPostStartScript_NoPackages(t *testing.T) {
 
 func TestPostStartScript_BothPackageTypes(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withAptPackages("curl").
 		withPipPackages("flask").
 		build()

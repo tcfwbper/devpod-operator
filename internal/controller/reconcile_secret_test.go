@@ -22,7 +22,7 @@ import (
 
 func TestReconcileSecret_CreatesWhenNotFound(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -30,11 +30,11 @@ func TestReconcileSecret_CreatesWhenNotFound(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, secret)
 
-	assert.Equal(t, "dev1", secret.Name)
+	assert.Equal(t, testName, secret.Name)
 	assert.Equal(t, "ns", secret.Namespace)
 	assert.Equal(t, corev1.SecretTypeOpaque, secret.Type)
-	assert.Contains(t, secret.Data, "ubuntu-password")
-	assert.Equal(t, []byte(""), secret.Data["ubuntu-password"])
+	assert.Contains(t, secret.Data, secretKeyPassword)
+	assert.Equal(t, []byte(""), secret.Data[secretKeyPassword])
 
 	// Verify owner reference
 	require.NotEmpty(t, secret.OwnerReferences)
@@ -48,15 +48,15 @@ func TestReconcileSecret_CreatesWhenNotFound(t *testing.T) {
 
 func TestReconcileSecret_ReturnsExistingUnchanged(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	existingSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
-			"ubuntu-password": []byte("s3cret!!"),
+			secretKeyPassword: []byte("s3cret!!"),
 		},
 	}
 	c := fakeClientWith(t, dp, existingSecret)
@@ -66,17 +66,17 @@ func TestReconcileSecret_ReturnsExistingUnchanged(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, secret)
 
-	assert.Equal(t, []byte("s3cret!!"), secret.Data["ubuntu-password"],
+	assert.Equal(t, []byte("s3cret!!"), secret.Data[secretKeyPassword],
 		"existing password must not be overwritten")
 }
 
 func TestReconcileSecret_RestoresKeyWhenMissing(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	existingSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
@@ -90,8 +90,8 @@ func TestReconcileSecret_RestoresKeyWhenMissing(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, secret)
 
-	assert.Contains(t, secret.Data, "ubuntu-password")
-	assert.Equal(t, []byte(""), secret.Data["ubuntu-password"])
+	assert.Contains(t, secret.Data, secretKeyPassword)
+	assert.Equal(t, []byte(""), secret.Data[secretKeyPassword])
 }
 
 // =============================================================================
@@ -100,11 +100,11 @@ func TestReconcileSecret_RestoresKeyWhenMissing(t *testing.T) {
 
 func TestReconcileSecret_NilDataMap(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	existingSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: nil,
@@ -116,20 +116,20 @@ func TestReconcileSecret_NilDataMap(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, secret)
 	require.NotNil(t, secret.Data)
-	assert.Equal(t, []byte(""), secret.Data["ubuntu-password"])
+	assert.Equal(t, []byte(""), secret.Data[secretKeyPassword])
 }
 
 func TestReconcileSecret_EmptyPasswordNotOverwritten(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	existingSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
-			"ubuntu-password": []byte(""),
+			secretKeyPassword: []byte(""),
 		},
 	}
 	c := fakeClientWith(t, dp, existingSecret)
@@ -138,7 +138,7 @@ func TestReconcileSecret_EmptyPasswordNotOverwritten(t *testing.T) {
 	secret, err := r.reconcileSecret(testCtx(), dp)
 	require.NoError(t, err)
 	require.NotNil(t, secret)
-	assert.Equal(t, []byte(""), secret.Data["ubuntu-password"])
+	assert.Equal(t, []byte(""), secret.Data[secretKeyPassword])
 }
 
 // =============================================================================
@@ -147,7 +147,7 @@ func TestReconcileSecret_EmptyPasswordNotOverwritten(t *testing.T) {
 
 func TestReconcileSecret_GetError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	errGet := errors.New("api unavailable")
 	c := interceptingClient(t, interceptor.Funcs{
 		Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
@@ -166,7 +166,7 @@ func TestReconcileSecret_GetError(t *testing.T) {
 
 func TestReconcileSecret_CreateError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
 		Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			if _, ok := obj.(*corev1.Secret); ok {
@@ -190,12 +190,12 @@ func TestReconcileSecret_CreateError(t *testing.T) {
 
 func TestReconcileSecret_UpdateError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	// Secret with missing key triggers update
 	existingSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{},
@@ -221,7 +221,7 @@ func TestReconcileSecret_UpdateError(t *testing.T) {
 
 func TestReconcileSecret_SetsOwnerReference(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 

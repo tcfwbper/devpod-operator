@@ -28,19 +28,19 @@ import (
 
 func TestReconcile_FullHappyPath(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
-		withStorageClass("standard").
+		withStorageClass(testStorageClass).
 		build()
-	secret := newPasswordSecret("dev1", "ns", "validpass1")
+	secret := newPasswordSecret("validpass1")
 	storageClass := &storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{Name: "standard"},
+		ObjectMeta: metav1.ObjectMeta{Name: testStorageClass},
 	}
 	// Pre-create the StatefulSet as ready
 	sts := &kappsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		Status: kappsv1.StatefulSetStatus{
 			ReadyReplicas:      1,
@@ -53,14 +53,14 @@ func TestReconcile_FullHappyPath(t *testing.T) {
 	r := newTestReconciler(c)
 
 	result, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, ctrl.Result{}, result)
 
 	// Verify status is Ready
 	var updated appsv1.DevPod
-	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: "dev1", Namespace: "ns"}, &updated))
+	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: testName, Namespace: testNamespace}, &updated))
 	for _, cond := range updated.Status.Conditions {
 		if cond.Type == appsv1.ConditionReady {
 			assert.Equal(t, metav1.ConditionTrue, cond.Status)
@@ -70,35 +70,35 @@ func TestReconcile_FullHappyPath(t *testing.T) {
 
 func TestReconcile_AddsFinalizer(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").build() // No finalizer
+	dp := newDevPod().build() // No finalizer
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
 	_, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	require.NoError(t, err)
 
 	// Verify finalizer was added
 	var updated appsv1.DevPod
-	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: "dev1", Namespace: "ns"}, &updated))
+	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: testName, Namespace: testNamespace}, &updated))
 	assert.Contains(t, updated.Finalizers, "apps.devpod.com/finalizer")
 }
 
 func TestReconcile_ProgressingWhenStatefulSetNotReady(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
-		withStorageClass("standard").
+		withStorageClass(testStorageClass).
 		build()
-	secret := newPasswordSecret("dev1", "ns", "validpass1")
+	secret := newPasswordSecret("validpass1")
 	storageClass := &storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{Name: "standard"},
+		ObjectMeta: metav1.ObjectMeta{Name: testStorageClass},
 	}
 	sts := &kappsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		Status: kappsv1.StatefulSetStatus{
 			ReadyReplicas:      0,
@@ -111,7 +111,7 @@ func TestReconcile_ProgressingWhenStatefulSetNotReady(t *testing.T) {
 	r := newTestReconciler(c)
 
 	result, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, 10*time.Second, result.RequeueAfter)
@@ -119,17 +119,17 @@ func TestReconcile_ProgressingWhenStatefulSetNotReady(t *testing.T) {
 
 func TestReconcile_ProgressingWhenObservedGenerationLags(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
-		withStorageClass("standard").
+		withStorageClass(testStorageClass).
 		build()
-	secret := newPasswordSecret("dev1", "ns", "validpass1")
+	secret := newPasswordSecret("validpass1")
 	storageClass := &storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{Name: "standard"},
+		ObjectMeta: metav1.ObjectMeta{Name: testStorageClass},
 	}
 	sts := &kappsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:       "dev1",
+			Name:       testName,
 			Namespace:  "ns",
 			Generation: 2,
 		},
@@ -143,7 +143,7 @@ func TestReconcile_ProgressingWhenObservedGenerationLags(t *testing.T) {
 	r := newTestReconciler(c)
 
 	result, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, 10*time.Second, result.RequeueAfter)
@@ -155,39 +155,39 @@ func TestReconcile_ProgressingWhenObservedGenerationLags(t *testing.T) {
 
 func TestReconcile_WritesPasswordSecret(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().withStorageClass("standard").build()
-	secret := newPasswordSecret("dev1", "ns", "validpass1")
+	dp := newDevPod().withFinalizer().withStorageClass(testStorageClass).build()
+	secret := newPasswordSecret("validpass1")
 	storageClass := &storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{Name: "standard"},
+		ObjectMeta: metav1.ObjectMeta{Name: testStorageClass},
 	}
 
 	c := fakeClientWith(t, dp, secret, storageClass)
 	r := newTestReconciler(c)
 
 	_, _ = r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 
 	var updated appsv1.DevPod
-	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: "dev1", Namespace: "ns"}, &updated))
-	assert.Equal(t, "dev1", updated.Status.PasswordSecret)
+	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: testName, Namespace: testNamespace}, &updated))
+	assert.Equal(t, testName, updated.Status.PasswordSecret)
 }
 
 func TestReconcile_WritesSSHNodePort(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
-		withStorageClass("standard").
+		withStorageClass(testStorageClass).
 		withNodePorts(appsv1.NodePortMapping{Src: 22, Dest: 30022}).
 		build()
-	secret := newPasswordSecret("dev1", "ns", "validpass1")
+	secret := newPasswordSecret("validpass1")
 	storageClass := &storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{Name: "standard"},
+		ObjectMeta: metav1.ObjectMeta{Name: testStorageClass},
 	}
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -200,28 +200,28 @@ func TestReconcile_WritesSSHNodePort(t *testing.T) {
 	r := newTestReconciler(c)
 
 	_, _ = r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 
 	var updated appsv1.DevPod
-	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: "dev1", Namespace: "ns"}, &updated))
+	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: testName, Namespace: testNamespace}, &updated))
 	assert.Equal(t, int32(30022), updated.Status.SSHNodePort)
 }
 
 func TestReconcile_WritesReadyReplicas(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
-		withStorageClass("standard").
+		withStorageClass(testStorageClass).
 		build()
-	secret := newPasswordSecret("dev1", "ns", "validpass1")
+	secret := newPasswordSecret("validpass1")
 	storageClass := &storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{Name: "standard"},
+		ObjectMeta: metav1.ObjectMeta{Name: testStorageClass},
 	}
 	sts := &kappsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 		},
 		Status: kappsv1.StatefulSetStatus{
 			ReadyReplicas:      1,
@@ -234,11 +234,11 @@ func TestReconcile_WritesReadyReplicas(t *testing.T) {
 	r := newTestReconciler(c)
 
 	_, _ = r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 
 	var updated appsv1.DevPod
-	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: "dev1", Namespace: "ns"}, &updated))
+	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: testName, Namespace: testNamespace}, &updated))
 	assert.Equal(t, int32(1), updated.Status.ReadyReplicas)
 }
 
@@ -248,19 +248,19 @@ func TestReconcile_WritesReadyReplicas(t *testing.T) {
 
 func TestReconcile_PendingWhenPasswordEmpty(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newPasswordSecret("dev1", "ns", "") // empty password
+	dp := newDevPod().withFinalizer().build()
+	secret := newPasswordSecret("") // empty password
 	c := fakeClientWith(t, dp, secret)
 	r := newTestReconciler(c)
 
 	result, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, ctrl.Result{}, result) // no requeue
 
 	var updated appsv1.DevPod
-	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: "dev1", Namespace: "ns"}, &updated))
+	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: testName, Namespace: testNamespace}, &updated))
 	for _, cond := range updated.Status.Conditions {
 		assert.Equal(t, metav1.ConditionFalse, cond.Status)
 		assert.Equal(t, appsv1.ReasonPasswordNotSet, cond.Reason)
@@ -269,19 +269,19 @@ func TestReconcile_PendingWhenPasswordEmpty(t *testing.T) {
 
 func TestReconcile_DegradedWhenPasswordInvalid(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
-	secret := newPasswordSecret("dev1", "ns", "short") // 5 chars < 8
+	dp := newDevPod().withFinalizer().build()
+	secret := newPasswordSecret("short") // 5 chars < 8
 	c := fakeClientWith(t, dp, secret)
 	r := newTestReconciler(c)
 
 	result, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, 10*time.Second, result.RequeueAfter)
 
 	var updated appsv1.DevPod
-	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: "dev1", Namespace: "ns"}, &updated))
+	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: testName, Namespace: testNamespace}, &updated))
 	for _, cond := range updated.Status.Conditions {
 		if cond.Type == appsv1.ConditionDegraded {
 			assert.Equal(t, metav1.ConditionTrue, cond.Status)
@@ -292,23 +292,23 @@ func TestReconcile_DegradedWhenPasswordInvalid(t *testing.T) {
 
 func TestReconcile_DegradedWhenStorageClassNotFound(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
 		withStorageClass("nonexistent").
 		build()
-	secret := newPasswordSecret("dev1", "ns", "validpass1")
+	secret := newPasswordSecret("validpass1")
 	// No StorageClass created
 	c := fakeClientWith(t, dp, secret)
 	r := newTestReconciler(c)
 
 	result, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, 10*time.Second, result.RequeueAfter)
 
 	var updated appsv1.DevPod
-	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: "dev1", Namespace: "ns"}, &updated))
+	require.NoError(t, c.Get(testCtx(), types.NamespacedName{Name: testName, Namespace: testNamespace}, &updated))
 	for _, cond := range updated.Status.Conditions {
 		if cond.Type == appsv1.ConditionDegraded {
 			assert.Equal(t, metav1.ConditionTrue, cond.Status)
@@ -329,7 +329,7 @@ func TestReconcile_NotFound(t *testing.T) {
 	r := newTestReconciler(c)
 
 	result, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "nonexistent", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: "nonexistent", Namespace: testNamespace},
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, ctrl.Result{}, result)
@@ -337,7 +337,7 @@ func TestReconcile_NotFound(t *testing.T) {
 
 func TestReconcile_SecretReconcileError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
 		Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			if _, ok := obj.(*corev1.Secret); ok {
@@ -349,20 +349,20 @@ func TestReconcile_SecretReconcileError(t *testing.T) {
 	r := newTestReconciler(c)
 
 	_, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	assert.Error(t, err)
 }
 
 func TestReconcile_ServiceAccountReconcileError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
-		withStorageClass("standard").
+		withStorageClass(testStorageClass).
 		build()
-	secret := newPasswordSecret("dev1", "ns", "validpass1")
+	secret := newPasswordSecret("validpass1")
 	storageClass := &storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{Name: "standard"},
+		ObjectMeta: metav1.ObjectMeta{Name: testStorageClass},
 	}
 	c := interceptingClient(t, interceptor.Funcs{
 		Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
@@ -375,23 +375,23 @@ func TestReconcile_ServiceAccountReconcileError(t *testing.T) {
 	r := newTestReconciler(c)
 
 	_, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	assert.Error(t, err)
 }
 
 func TestReconcile_ServiceReconcileError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
-		withStorageClass("standard").
+		withStorageClass(testStorageClass).
 		build()
-	secret := newPasswordSecret("dev1", "ns", "validpass1")
+	secret := newPasswordSecret("validpass1")
 	storageClass := &storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{Name: "standard"},
+		ObjectMeta: metav1.ObjectMeta{Name: testStorageClass},
 	}
 	sa := &corev1.ServiceAccount{
-		ObjectMeta:                   metav1.ObjectMeta{Name: "dev1", Namespace: "ns"},
+		ObjectMeta:                   metav1.ObjectMeta{Name: testName, Namespace: testNamespace},
 		AutomountServiceAccountToken: boolPtr(false),
 	}
 	c := interceptingClient(t, interceptor.Funcs{
@@ -405,27 +405,27 @@ func TestReconcile_ServiceReconcileError(t *testing.T) {
 	r := newTestReconciler(c)
 
 	_, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	assert.Error(t, err)
 }
 
 func TestReconcile_StatefulSetReconcileError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
-		withStorageClass("standard").
+		withStorageClass(testStorageClass).
 		build()
-	secret := newPasswordSecret("dev1", "ns", "validpass1")
+	secret := newPasswordSecret("validpass1")
 	storageClass := &storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{Name: "standard"},
+		ObjectMeta: metav1.ObjectMeta{Name: testStorageClass},
 	}
 	sa := &corev1.ServiceAccount{
-		ObjectMeta:                   metav1.ObjectMeta{Name: "dev1", Namespace: "ns"},
+		ObjectMeta:                   metav1.ObjectMeta{Name: testName, Namespace: testNamespace},
 		AutomountServiceAccountToken: boolPtr(false),
 	}
 	svc := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "dev1", Namespace: "ns"},
+		ObjectMeta: metav1.ObjectMeta{Name: testName, Namespace: testNamespace},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{{Port: 22, NodePort: 30022}},
 		},
@@ -441,18 +441,18 @@ func TestReconcile_StatefulSetReconcileError(t *testing.T) {
 	r := newTestReconciler(c)
 
 	_, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	assert.Error(t, err)
 }
 
 func TestReconcile_StorageClassGetError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
-		withStorageClass("standard").
+		withStorageClass(testStorageClass).
 		build()
-	secret := newPasswordSecret("dev1", "ns", "validpass1")
+	secret := newPasswordSecret("validpass1")
 	c := interceptingClient(t, interceptor.Funcs{
 		Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			if _, ok := obj.(*storagev1.StorageClass); ok {
@@ -464,7 +464,7 @@ func TestReconcile_StorageClassGetError(t *testing.T) {
 	r := newTestReconciler(c)
 
 	_, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	assert.Error(t, err)
 }
@@ -475,7 +475,7 @@ func TestReconcile_StorageClassGetError(t *testing.T) {
 
 func TestFinalize_DeletesPVCsWhenReclaimDelete(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
 		withDeletionTimestamp().
 		withReclaimPolicy(appsv1.PVCReclaimDelete).
@@ -483,21 +483,21 @@ func TestFinalize_DeletesPVCsWhenReclaimDelete(t *testing.T) {
 
 	pvc1 := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "workspace-dev1-0",
-			Namespace: "ns",
+			Name:      testWorkspacePVC,
+			Namespace: testNamespace,
 			Labels: map[string]string{
-				"app.kubernetes.io/name":     "devpod",
-				"app.kubernetes.io/instance": "dev1",
+				labelKeyName:     labelValueName,
+				labelKeyInstance: testName,
 			},
 		},
 	}
 	pvc2 := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "docker-storage-dev1-0",
-			Namespace: "ns",
+			Namespace: testNamespace,
 			Labels: map[string]string{
-				"app.kubernetes.io/name":     "devpod",
-				"app.kubernetes.io/instance": "dev1",
+				labelKeyName:     labelValueName,
+				labelKeyInstance: testName,
 			},
 		},
 	}
@@ -505,7 +505,7 @@ func TestFinalize_DeletesPVCsWhenReclaimDelete(t *testing.T) {
 	r := newTestReconciler(c)
 
 	result, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, ctrl.Result{}, result)
@@ -517,7 +517,7 @@ func TestFinalize_DeletesPVCsWhenReclaimDelete(t *testing.T) {
 
 	// Verify finalizer removed
 	var updated appsv1.DevPod
-	err = c.Get(testCtx(), types.NamespacedName{Name: "dev1", Namespace: "ns"}, &updated)
+	err = c.Get(testCtx(), types.NamespacedName{Name: testName, Namespace: testNamespace}, &updated)
 	// Object may be deleted or finalizer removed
 	if err == nil {
 		assert.NotContains(t, updated.Finalizers, "apps.devpod.com/finalizer")
@@ -526,7 +526,7 @@ func TestFinalize_DeletesPVCsWhenReclaimDelete(t *testing.T) {
 
 func TestFinalize_RetainsPVCsWhenReclaimRetain(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
 		withDeletionTimestamp().
 		withReclaimPolicy(appsv1.PVCReclaimRetain).
@@ -534,11 +534,11 @@ func TestFinalize_RetainsPVCsWhenReclaimRetain(t *testing.T) {
 
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "workspace-dev1-0",
-			Namespace: "ns",
+			Name:      testWorkspacePVC,
+			Namespace: testNamespace,
 			Labels: map[string]string{
-				"app.kubernetes.io/name":     "devpod",
-				"app.kubernetes.io/instance": "dev1",
+				labelKeyName:     labelValueName,
+				labelKeyInstance: testName,
 			},
 		},
 	}
@@ -546,7 +546,7 @@ func TestFinalize_RetainsPVCsWhenReclaimRetain(t *testing.T) {
 	r := newTestReconciler(c)
 
 	_, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	require.NoError(t, err)
 
@@ -558,7 +558,7 @@ func TestFinalize_RetainsPVCsWhenReclaimRetain(t *testing.T) {
 
 func TestFinalize_RemovesFinalizer(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
 		withDeletionTimestamp().
 		withReclaimPolicy(appsv1.PVCReclaimRetain).
@@ -567,12 +567,12 @@ func TestFinalize_RemovesFinalizer(t *testing.T) {
 	r := newTestReconciler(c)
 
 	_, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	require.NoError(t, err)
 
 	var updated appsv1.DevPod
-	err = c.Get(testCtx(), types.NamespacedName{Name: "dev1", Namespace: "ns"}, &updated)
+	err = c.Get(testCtx(), types.NamespacedName{Name: testName, Namespace: testNamespace}, &updated)
 	if err == nil {
 		assert.NotContains(t, updated.Finalizers, "apps.devpod.com/finalizer")
 	}
@@ -580,7 +580,7 @@ func TestFinalize_RemovesFinalizer(t *testing.T) {
 
 func TestFinalize_NoFinalizerPresent(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withDeletionTimestamp().
 		build()
 	// Add a foreign finalizer so the fake client accepts the object
@@ -591,7 +591,7 @@ func TestFinalize_NoFinalizerPresent(t *testing.T) {
 	r := newTestReconciler(c)
 
 	result, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, ctrl.Result{}, result)
@@ -599,7 +599,7 @@ func TestFinalize_NoFinalizerPresent(t *testing.T) {
 
 func TestFinalize_PVCDeleteNotFoundIgnored(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
 		withDeletionTimestamp().
 		withReclaimPolicy(appsv1.PVCReclaimDelete).
@@ -607,11 +607,11 @@ func TestFinalize_PVCDeleteNotFoundIgnored(t *testing.T) {
 
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "workspace-dev1-0",
-			Namespace: "ns",
+			Name:      testWorkspacePVC,
+			Namespace: testNamespace,
 			Labels: map[string]string{
-				"app.kubernetes.io/name":     "devpod",
-				"app.kubernetes.io/instance": "dev1",
+				labelKeyName:     labelValueName,
+				labelKeyInstance: testName,
 			},
 		},
 	}
@@ -626,14 +626,14 @@ func TestFinalize_PVCDeleteNotFoundIgnored(t *testing.T) {
 	r := newTestReconciler(c)
 
 	_, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	assert.NoError(t, err)
 }
 
 func TestFinalize_PVCListError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withFinalizer().
 		withDeletionTimestamp().
 		withReclaimPolicy(appsv1.PVCReclaimDelete).
@@ -649,7 +649,7 @@ func TestFinalize_PVCListError(t *testing.T) {
 	r := newTestReconciler(c)
 
 	_, err := r.Reconcile(testCtx(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Name: "dev1", Namespace: "ns"},
+		NamespacedName: types.NamespacedName{Name: testName, Namespace: testNamespace},
 	})
 	assert.Error(t, err)
 }

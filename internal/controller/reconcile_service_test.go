@@ -23,7 +23,7 @@ import (
 
 func TestReconcileService_CreatesWhenNotFound(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withNodePorts(
 			appsv1.NodePortMapping{Src: 22, Dest: 30022},
 			appsv1.NodePortMapping{Src: 8080, Dest: 30080},
@@ -37,12 +37,12 @@ func TestReconcileService_CreatesWhenNotFound(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, svc)
 
-	assert.Equal(t, "dev1", svc.Name)
+	assert.Equal(t, testName, svc.Name)
 	assert.Equal(t, corev1.ServiceTypeNodePort, svc.Spec.Type)
 	assert.Equal(t, selectorLabels(dp), svc.Spec.Selector)
 
 	require.Len(t, svc.Spec.Ports, 2)
-	assert.Equal(t, "ssh", svc.Spec.Ports[0].Name)
+	assert.Equal(t, portNameSSH, svc.Spec.Ports[0].Name)
 	assert.Equal(t, int32(22), svc.Spec.Ports[0].Port)
 	assert.Equal(t, int32(22), svc.Spec.Ports[0].TargetPort.IntVal)
 	assert.Equal(t, int32(30022), svc.Spec.Ports[0].NodePort)
@@ -60,12 +60,12 @@ func TestReconcileService_CreatesWhenNotFound(t *testing.T) {
 	assert.Equal(t, "DevPod", svc.OwnerReferences[0].Kind)
 
 	// Verify spec-hash annotation
-	assert.Contains(t, svc.Annotations, "devpod.com/spec-hash")
+	assert.Contains(t, svc.Annotations, specHashAnnotation)
 }
 
 func TestReconcileService_NoOpWhenHashMatches(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withNodePorts(appsv1.NodePortMapping{Src: 22, Dest: 30022}).
 		withFinalizer().
 		build()
@@ -75,16 +75,16 @@ func TestReconcileService_NoOpWhenHashMatches(t *testing.T) {
 	// The exact hash is computed from the desired Service spec
 	existingSvc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 			Annotations: map[string]string{
-				"devpod.com/spec-hash": "placeholder-will-be-set-by-production-code",
+				specHashAnnotation: "placeholder-will-be-set-by-production-code",
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeNodePort,
 			Ports: []corev1.ServicePort{
-				{Name: "ssh", Port: 22, NodePort: 30022, Protocol: corev1.ProtocolTCP},
+				{Name: portNameSSH, Port: 22, NodePort: 30022, Protocol: corev1.ProtocolTCP},
 			},
 		},
 	}
@@ -99,7 +99,7 @@ func TestReconcileService_NoOpWhenHashMatches(t *testing.T) {
 
 func TestReconcileService_UpdatesWhenHashDiffers(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withNodePorts(
 			appsv1.NodePortMapping{Src: 22, Dest: 30022},
 			appsv1.NodePortMapping{Src: 9090, Dest: 30090},
@@ -109,17 +109,17 @@ func TestReconcileService_UpdatesWhenHashDiffers(t *testing.T) {
 
 	existingSvc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 			Annotations: map[string]string{
-				"devpod.com/spec-hash": "old-hash",
+				specHashAnnotation: "old-hash",
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			Type:      corev1.ServiceTypeNodePort,
 			ClusterIP: "10.0.0.1",
 			Ports: []corev1.ServicePort{
-				{Name: "ssh", Port: 22, NodePort: 30022, Protocol: corev1.ProtocolTCP},
+				{Name: portNameSSH, Port: 22, NodePort: 30022, Protocol: corev1.ProtocolTCP},
 			},
 		},
 	}
@@ -135,22 +135,22 @@ func TestReconcileService_UpdatesWhenHashDiffers(t *testing.T) {
 	// ClusterIP preserved
 	assert.Equal(t, "10.0.0.1", svc.Spec.ClusterIP)
 	// New hash annotation
-	assert.NotEqual(t, "old-hash", svc.Annotations["devpod.com/spec-hash"])
+	assert.NotEqual(t, "old-hash", svc.Annotations[specHashAnnotation])
 }
 
 func TestReconcileService_PreservesClusterIP(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withNodePorts(appsv1.NodePortMapping{Src: 22, Dest: 30022}).
 		withFinalizer().
 		build()
 
 	existingSvc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 			Annotations: map[string]string{
-				"devpod.com/spec-hash": "outdated",
+				specHashAnnotation: "outdated",
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -173,14 +173,14 @@ func TestReconcileService_PreservesClusterIP(t *testing.T) {
 
 func TestReconcileService_NilAnnotations(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withNodePorts(appsv1.NodePortMapping{Src: 22, Dest: 30022}).
 		withFinalizer().
 		build()
 
 	existingSvc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "dev1",
+			Name:        testName,
 			Namespace:   "ns",
 			Annotations: nil,
 		},
@@ -194,7 +194,7 @@ func TestReconcileService_NilAnnotations(t *testing.T) {
 	svc, err := r.reconcileService(testCtx(), dp)
 	require.NoError(t, err)
 	require.NotNil(t, svc)
-	assert.Contains(t, svc.Annotations, "devpod.com/spec-hash")
+	assert.Contains(t, svc.Annotations, specHashAnnotation)
 }
 
 // =============================================================================
@@ -203,7 +203,7 @@ func TestReconcileService_NilAnnotations(t *testing.T) {
 
 func TestReconcileService_GetError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
 		Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			if _, ok := obj.(*corev1.Service); ok {
@@ -221,7 +221,7 @@ func TestReconcileService_GetError(t *testing.T) {
 
 func TestReconcileService_CreateError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
 		Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			if _, ok := obj.(*corev1.Service); ok {
@@ -245,16 +245,16 @@ func TestReconcileService_CreateError(t *testing.T) {
 
 func TestReconcileService_UpdateError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withNodePorts(appsv1.NodePortMapping{Src: 22, Dest: 30022}).
 		withFinalizer().
 		build()
 	existingSvc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dev1",
-			Namespace: "ns",
+			Name:      testName,
+			Namespace: testNamespace,
 			Annotations: map[string]string{
-				"devpod.com/spec-hash": "stale",
+				specHashAnnotation: "stale",
 			},
 		},
 		Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort},
@@ -287,7 +287,7 @@ func TestReconcileService_HashComputationError(t *testing.T) {
 
 func TestReconcileService_SetsOwnerReference(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -303,7 +303,7 @@ func TestReconcileService_SetsOwnerReference(t *testing.T) {
 
 func TestReconcileService_LabelsAndSelector(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").
+	dp := newDevPod().
 		withNodePorts(appsv1.NodePortMapping{Src: 22, Dest: 30022}).
 		withFinalizer().
 		build()

@@ -42,7 +42,7 @@ func TestConditionSet_MutualExclusion(t *testing.T) {
 
 func TestSetConditions_SetsAllThreeTypes(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withGeneration(3).build()
+	dp := newDevPod().withGeneration(3).build()
 	cs := conditionSet{
 		ready:       metav1.ConditionTrue,
 		progressing: metav1.ConditionFalse,
@@ -76,7 +76,7 @@ func TestSetConditions_SetsAllThreeTypes(t *testing.T) {
 
 func TestSetConditions_OverwritesPreviousConditions(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withGeneration(2).build()
+	dp := newDevPod().withGeneration(2).build()
 	// Set initial conditions
 	dp.Status.Conditions = []metav1.Condition{
 		{Type: appsv1.ConditionReady, Status: metav1.ConditionTrue},
@@ -107,7 +107,7 @@ func TestSetConditions_OverwritesPreviousConditions(t *testing.T) {
 
 func TestUpdateStatus_SetsObservedGeneration(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withGeneration(5).withFinalizer().build()
+	dp := newDevPod().withGeneration(5).withFinalizer().build()
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -118,7 +118,7 @@ func TestUpdateStatus_SetsObservedGeneration(t *testing.T) {
 
 func TestUpdateStatus_ReturnsError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
 		SubResourceUpdate: func(ctx context.Context, client client.Client, subResourceName string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
 			return errors.New("status update failed")
@@ -136,7 +136,7 @@ func TestUpdateStatus_ReturnsError(t *testing.T) {
 
 func TestReady_SetsCorrectConditions(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withGeneration(3).withFinalizer().build()
+	dp := newDevPod().withGeneration(3).withFinalizer().build()
 	dp.Status.SSHNodePort = 30022
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
@@ -163,7 +163,7 @@ func TestReady_SetsCorrectConditions(t *testing.T) {
 
 func TestReady_ReturnsNoRequeue(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	dp.Status.SSHNodePort = 30022
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
@@ -176,7 +176,7 @@ func TestReady_ReturnsNoRequeue(t *testing.T) {
 
 func TestReady_StatusUpdateError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	dp.Status.SSHNodePort = 30022
 	c := interceptingClient(t, interceptor.Funcs{
 		SubResourceUpdate: func(ctx context.Context, client client.Client, subResourceName string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
@@ -195,7 +195,7 @@ func TestReady_StatusUpdateError(t *testing.T) {
 
 func TestProgressing_SetsCorrectConditions(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withGeneration(2).withFinalizer().build()
+	dp := newDevPod().withGeneration(2).withFinalizer().build()
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -218,7 +218,7 @@ func TestProgressing_SetsCorrectConditions(t *testing.T) {
 
 func TestProgressing_RequeuesAfterInterval(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -229,7 +229,7 @@ func TestProgressing_RequeuesAfterInterval(t *testing.T) {
 
 func TestProgressing_StatusUpdateError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
 		SubResourceUpdate: func(ctx context.Context, client client.Client, subResourceName string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
 			return errors.New("status update failed")
@@ -247,7 +247,7 @@ func TestProgressing_StatusUpdateError(t *testing.T) {
 
 func TestPending_SetsAllConditionsFalse(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withGeneration(1).withFinalizer().build()
+	dp := newDevPod().withGeneration(1).withFinalizer().build()
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -264,7 +264,7 @@ func TestPending_SetsAllConditionsFalse(t *testing.T) {
 
 func TestPending_ReturnsNoRequeue(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -276,7 +276,7 @@ func TestPending_ReturnsNoRequeue(t *testing.T) {
 
 func TestPending_StatusUpdateError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := interceptingClient(t, interceptor.Funcs{
 		SubResourceUpdate: func(ctx context.Context, client client.Client, subResourceName string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
 			return errors.New("status update failed")
@@ -294,7 +294,7 @@ func TestPending_StatusUpdateError(t *testing.T) {
 
 func TestDegraded_WithCause_SetsConditionsAndReturnsError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 	cause := errors.New("api timeout")
@@ -315,7 +315,7 @@ func TestDegraded_WithCause_SetsConditionsAndReturnsError(t *testing.T) {
 
 func TestDegraded_NilCause_RequeuesAfterInterval(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	c := fakeClientWith(t, dp)
 	r := newTestReconciler(c)
 
@@ -332,7 +332,7 @@ func TestDegraded_NilCause_RequeuesAfterInterval(t *testing.T) {
 
 func TestDegraded_StatusUpdateError(t *testing.T) {
 
-	dp := newDevPod("dev1", "ns").withFinalizer().build()
+	dp := newDevPod().withFinalizer().build()
 	cause := errors.New("original")
 	statusErr := errors.New("status update failed")
 	c := interceptingClient(t, interceptor.Funcs{
