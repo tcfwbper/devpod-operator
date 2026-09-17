@@ -47,6 +47,13 @@ const metricsServiceName = "devpod-operator-controller-manager-metrics-service"
 // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data
 const metricsRoleBindingName = "devpod-operator-metrics-binding"
 
+// secretKeyPassword is the key in the DevPod-owned Secret that the controller
+// reads the ssh password from (see internal/controller/helpers.go).
+const secretKeyPassword = "ubuntu-password"
+
+// testPassword is a password that satisfies validatePassword (>= 8 chars, no ":" or line breaks).
+const testPassword = "testpassword123"
+
 var _ = Describe("Manager", Ordered, func() {
 	var controllerPodName string
 
@@ -358,12 +365,7 @@ spec:
 			Eventually(verifySecret, 3*time.Minute, 2*time.Second).Should(Succeed())
 
 			By("patching the Secret with a valid password to unblock reconciliation")
-			encoded := base64.StdEncoding.EncodeToString([]byte("testpassword123"))
-			patch := fmt.Sprintf(`{"data":{"testuser-password":"%s"}}`, encoded)
-			cmd := exec.Command("kubectl", "patch", "secret", devpodName,
-				"-n", testNS, "-p", patch, "--type=merge")
-			_, err := utils.Run(cmd)
-			Expect(err).NotTo(HaveOccurred(), "Failed to patch Secret with password")
+			patchSecretPassword(devpodName, testNS)
 		})
 
 		It("should create a ServiceAccount", func() {
@@ -491,7 +493,7 @@ spec:
 			Expect(err).NotTo(HaveOccurred())
 
 			By("patching the Secret with a valid password")
-			waitForSecretAndPatch(devpodName, lifecycleNS, "updateuser")
+			waitForSecretAndPatch(devpodName, lifecycleNS)
 
 			By("waiting for the Service to exist")
 			Eventually(func(g Gomega) {
@@ -568,7 +570,7 @@ spec:
 			Expect(err).NotTo(HaveOccurred())
 
 			By("patching the Secret with a valid password")
-			waitForSecretAndPatch(devpodName, lifecycleNS, "deluser")
+			waitForSecretAndPatch(devpodName, lifecycleNS)
 
 			By("waiting for PVCs to be created")
 			Eventually(func(g Gomega) {
@@ -640,7 +642,7 @@ spec:
 			Expect(err).NotTo(HaveOccurred())
 
 			By("patching the Secret with a valid password")
-			waitForSecretAndPatch(devpodName, lifecycleNS, "retainuser")
+			waitForSecretAndPatch(devpodName, lifecycleNS)
 
 			By("waiting for PVCs to be created")
 			Eventually(func(g Gomega) {
@@ -684,15 +686,24 @@ spec:
 	})
 })
 
-func waitForSecretAndPatch(name, ns, username string) {
+// waitForSecretAndPatch waits for the controller to create the DevPod-owned
+// Secret and then fills in a valid password so reconciliation can proceed.
+func waitForSecretAndPatch(name, ns string) {
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "secret", name, "-n", ns)
 		_, err := utils.Run(cmd)
 		g.Expect(err).NotTo(HaveOccurred())
 	}, 3*time.Minute, 2*time.Second).Should(Succeed())
 
-	encoded := base64.StdEncoding.EncodeToString([]byte("testpassword123"))
-	patch := fmt.Sprintf(`{"data":{"%s-password":"%s"}}`, username, encoded)
+	patchSecretPassword(name, ns)
+}
+
+// patchSecretPassword writes testPassword into the secretKeyPassword key of the
+// named Secret. The key name is fixed by the controller and does not depend on
+// spec.auth.username.
+func patchSecretPassword(name, ns string) {
+	encoded := base64.StdEncoding.EncodeToString([]byte(testPassword))
+	patch := fmt.Sprintf(`{"data":{"%s":"%s"}}`, secretKeyPassword, encoded)
 	cmd := exec.Command("kubectl", "patch", "secret", name,
 		"-n", ns, "-p", patch, "--type=merge")
 	_, err := utils.Run(cmd)

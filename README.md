@@ -104,10 +104,10 @@ After creating a DevPod, the operator creates a Secret named after the DevPod. Y
 
 ```sh
 kubectl patch secret my-devpod -n devpod-test -p \
-  '{"data":{"devuser-password":"'"$(echo -n 'your-password' | base64)"'"}}'
+  '{"data":{"ubuntu-password":"'"$(echo -n 'your-password' | base64)"'"}}'
 ```
 
-The key name follows the pattern `<username>-password`.
+The key name is always `ubuntu-password`, regardless of `spec.auth.username`. The controller reads this key, injects it into the workspace container, and applies it to the `spec.auth.username` account via `chpasswd`.
 
 ## Make Targets
 
