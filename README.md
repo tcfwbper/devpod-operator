@@ -1,135 +1,165 @@
-# devpod-operator
-// TODO(user): Add simple overview of use/purpose
+# DevPod Operator
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+A Kubernetes operator that provisions on-demand development environments. Each `DevPod` custom resource creates a fully isolated workspace backed by a StatefulSet with SSH access, persistent storage, and an optional Docker-in-Docker sidecar.
 
-## Getting Started
+## Architecture
 
-### Prerequisites
-- go version v1.24.6+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+The operator watches `DevPod` resources (`apps.devpod.com/v1`) and reconciles the following sub-resources for each CR:
 
-### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
+| Sub-resource   | Kind              | Purpose                                       |
+|----------------|-------------------|-----------------------------------------------|
+| Secret         | `core/v1`         | SSH password for the dev user                  |
+| ServiceAccount | `core/v1`         | Dedicated SA with automount disabled           |
+| Service        | `core/v1`         | NodePort service for SSH and custom ports      |
+| StatefulSet    | `apps/v1`         | Dev container with persistent volume claims    |
+
+A finalizer (`apps.devpod.com/finalizer`) handles PVC cleanup on deletion, respecting the configured `reclaimPolicy`.
+
+## Prerequisites
+
+- Kubernetes cluster v1.28+
+- kubectl v1.28+
+
+## Installation
+
+### From a GitHub Release (recommended)
+
+Apply the latest release manifest directly:
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/devpod-operator:tag
+kubectl apply -f https://github.com/tcfwbper/devpod-operator/releases/latest/download/install.yaml
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
-
-**Install the CRDs into the cluster:**
+Or pin a specific version:
 
 ```sh
+kubectl apply -f https://github.com/tcfwbper/devpod-operator/releases/download/v1.0.0/install.yaml
+```
+
+### From Source
+
+```sh
+export IMG=ghcr.io/tcfwbper/devpod-operator:latest
+
+make docker-build docker-push IMG=$IMG
 make install
+make deploy IMG=$IMG
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+## Configuration
+
+### DevPod Custom Resource
+
+| Field                    | Type     | Required | Default                                       | Description                                                     |
+|--------------------------|----------|----------|-----------------------------------------------|-----------------------------------------------------------------|
+| `spec.image`             | string   | No       | `docker.io/tcfwbper/dev-env:1.0.0`            | Main dev container image                                        |
+| `spec.initWorkspaceImage`| string   | No       | `docker.io/tcfwbper/dev-env:1.0.0-init-workspace` | Init container image for workspace setup                    |
+| `spec.auth.username`     | string   | Yes      | —                                             | Linux account name (immutable, 1-31 chars, no reserved names)   |
+| `spec.persistence.storageClass` | string | Yes | —                                             | StorageClass name (immutable)                                   |
+| `spec.persistence.size`  | quantity | No       | `50Gi`                                        | Workspace volume size (immutable)                               |
+| `spec.persistence.reclaimPolicy` | enum | No   | `Retain`                                      | `Retain` or `Delete` — PVC behavior on DevPod deletion          |
+| `spec.nodePorts`         | list     | Yes      | —                                             | Port mappings (`src`/`dest`); must include `src: 22`; max 16    |
+| `spec.packages.apt`      | list     | No       | `[]`                                          | APT packages to install at startup                              |
+| `spec.packages.pip`      | list     | No       | `[]`                                          | pip packages to install at startup                              |
+| `spec.docker.enabled`    | bool     | No       | `true`                                        | Enable Docker-in-Docker sidecar                                 |
+| `spec.docker.image`      | string   | No       | `docker.io/docker:dind`                       | DinD sidecar image                                              |
+| `spec.docker.persistence.size` | quantity | No | `50Gi`                                        | Docker data volume size (immutable)                             |
+
+### Example
+
+```yaml
+apiVersion: apps.devpod.com/v1
+kind: DevPod
+metadata:
+  name: my-devpod
+  namespace: devpod-test
+spec:
+  image: docker.io/tcfwbper/dev-env:1.0.0
+  initWorkspaceImage: docker.io/tcfwbper/dev-env:1.0.0-init-workspace
+  auth:
+    username: devuser
+  persistence:
+    storageClass: local-path
+    size: 50Gi
+    reclaimPolicy: Retain
+  nodePorts:
+    - src: 22
+      dest: 30022
+  packages:
+    apt:
+      - htop
+      - python3-venv
+    pip:
+      - requests
+  docker:
+    enabled: true
+    image: docker.io/docker:dind
+    persistence:
+      size: 50Gi
+```
+
+### Password Setup
+
+After creating a DevPod, the operator creates a Secret named after the DevPod. You must patch this Secret with a valid password (8+ characters, no colons or newlines) before the workspace pod will start:
 
 ```sh
-make deploy IMG=<some-registry>/devpod-operator:tag
+kubectl patch secret my-devpod -n devpod-test -p \
+  '{"data":{"devuser-password":"'"$(echo -n 'your-password' | base64)"'"}}'
 ```
 
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-privileges or be logged in as admin.
+The key name follows the pattern `<username>-password`.
 
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
+## Make Targets
+
+| Target             | Description                                                    |
+|--------------------|----------------------------------------------------------------|
+| `make build`       | Build manager binary to `bin/manager`                          |
+| `make run`         | Run controller locally against current kubeconfig              |
+| `make docker-build`| Build Docker image (`IMG=...` to set tag)                      |
+| `make docker-push` | Push Docker image                                              |
+| `make docker-buildx`| Multi-platform build and push (amd64, arm64, s390x, ppc64le) |
+| `make install`     | Install CRDs into cluster                                      |
+| `make uninstall`   | Remove CRDs from cluster                                       |
+| `make deploy`      | Deploy controller to cluster (`IMG=...` to set image)          |
+| `make undeploy`    | Remove controller from cluster                                 |
+| `make manifests`   | Generate CRD and RBAC manifests from markers                   |
+| `make generate`    | Generate DeepCopy implementations                              |
+| `make build-installer` | Generate consolidated `dist/install.yaml`                  |
+| `make test`        | Run unit tests with envtest                                    |
+| `make test-e2e`    | Run e2e tests on a Kind cluster                                |
+| `make lint`        | Run golangci-lint                                              |
+| `make lint-fix`    | Run golangci-lint with auto-fix                                |
+| `make fmt`         | Run `go fmt`                                                   |
+| `make vet`         | Run `go vet`                                                   |
+| `make help`        | Show all available targets                                     |
+
+Pass `VERSION=x.y.z` to inject a semver into the binary via ldflags (defaults to `dev`).
+
+## Development
+
+### Running Tests
 
 ```sh
-kubectl apply -k config/samples/
+make test              # Unit tests (envtest — no real cluster needed)
+make test-e2e          # E2E tests (creates a Kind cluster automatically)
+make lint              # Linter
 ```
 
->**NOTE**: Ensure that the samples has default values to test it out.
+### Local Development
 
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
+```sh
+make install           # Install CRDs
+make run               # Run the controller locally
+```
+
+## Uninstall
 
 ```sh
 kubectl delete -k config/samples/
-```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
+make undeploy
 make uninstall
 ```
 
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
-
-## Project Distribution
-
-Following the options to release and provide this solution to the users.
-
-### By providing a bundle with all YAML files
-
-1. Build the installer for the image built and published in the registry:
-
-```sh
-make build-installer IMG=<some-registry>/devpod-operator:tag
-```
-
-**NOTE:** The makefile target mentioned above generates an 'install.yaml'
-file in the dist directory. This file contains all the resources built
-with Kustomize, which are necessary to install this project without its
-dependencies.
-
-2. Using the installer
-
-Users can just run 'kubectl apply -f <URL for YAML BUNDLE>' to install
-the project, i.e.:
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/devpod-operator/<tag or branch>/dist/install.yaml
-```
-
-### By providing a Helm Chart
-
-1. Build the chart using the optional helm plugin
-
-```sh
-kubebuilder edit --plugins=helm/v2-alpha
-```
-
-2. See that a chart was generated under 'dist/chart', and users
-can obtain this solution from there.
-
-**NOTE:** If you change the project, you need to update the Helm Chart
-using the same command above to sync the latest changes. Furthermore,
-if you create webhooks, you need to use the above command with
-the '--force' flag and manually ensure that any custom configuration
-previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml'
-is manually re-applied afterwards.
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
-**NOTE:** Run `make help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
-
 ## License
 
-Copyright 2026.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
+Copyright 2026. Licensed under the Apache License, Version 2.0.
