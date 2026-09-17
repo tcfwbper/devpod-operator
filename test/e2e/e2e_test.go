@@ -20,11 +20,13 @@ limitations under the License.
 package e2e
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -269,18 +271,433 @@ var _ = Describe("Manager", Ordered, func() {
 		})
 
 		// +kubebuilder:scaffold:e2e-webhooks-checks
+	})
 
-		// TODO: Customize the e2e test suite with scenarios specific to your project.
-		// Consider applying sample/CR(s) and check their status and/or verifying
-		// the reconciliation by using the metrics, i.e.:
-		// metricsOutput, err := getMetricsOutput()
-		// Expect(err).NotTo(HaveOccurred(), "Failed to retrieve logs from curl pod")
-		// Expect(metricsOutput).To(ContainSubstring(
-		//    fmt.Sprintf(`controller_runtime_reconcile_total{controller="%s",result="success"} 1`,
-		//    strings.ToLower(<Kind>),
-		// ))
+	Context("DevPod sub-resource creation", Ordered, func() {
+		const (
+			devpodName = "e2e-test-devpod"
+			testNS     = "devpod-e2e-test"
+		)
+
+		BeforeAll(func() {
+			By("creating a test namespace")
+			cmd := exec.Command("kubectl", "create", "ns", testNS)
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create test namespace")
+
+			By("labeling namespace to allow privileged pods")
+			cmd = exec.Command("kubectl", "label", "--overwrite", "ns", testNS,
+				"pod-security.kubernetes.io/enforce=privileged")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("applying the DevPod CR")
+			cr := fmt.Sprintf(`apiVersion: apps.devpod.com/v1
+kind: DevPod
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  image: docker.io/tcfwbper/dev-env:1.0.0
+  initWorkspaceImage: docker.io/tcfwbper/dev-env:1.0.0-init-workspace
+  auth:
+    username: testuser
+  persistence:
+    storageClass: standard
+    size: 1Gi
+    reclaimPolicy: Retain
+  nodePorts:
+    - src: 22
+      dest: 30122
+  docker:
+    enabled: false`, devpodName, testNS)
+
+			tmpFile, err := os.CreateTemp("", "devpod-e2e-*.yaml")
+			Expect(err).NotTo(HaveOccurred())
+			defer os.Remove(tmpFile.Name())
+			_, err = tmpFile.WriteString(cr)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tmpFile.Close()).To(Succeed())
+
+			cmd = exec.Command("kubectl", "apply", "-f", tmpFile.Name())
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create DevPod CR")
+		})
+
+		AfterAll(func() {
+			By("deleting the DevPod CR")
+			cmd := exec.Command("kubectl", "delete", "devpod", devpodName, "-n", testNS,
+				"--ignore-not-found=true", "--timeout=60s")
+			_, _ = utils.Run(cmd)
+
+			By("deleting test namespace")
+			cmd = exec.Command("kubectl", "delete", "ns", testNS, "--ignore-not-found=true")
+			_, _ = utils.Run(cmd)
+		})
+
+		It("should create a Secret with owner reference", func() {
+			verifySecret := func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "secret", devpodName,
+					"-n", testNS, "-o", "json")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred(), "Secret not found")
+
+				var secret map[string]interface{}
+				g.Expect(json.Unmarshal([]byte(output), &secret)).To(Succeed())
+
+				metadata := secret["metadata"].(map[string]interface{})
+				ownerRefs, ok := metadata["ownerReferences"].([]interface{})
+				g.Expect(ok).To(BeTrue(), "ownerReferences not found")
+				g.Expect(ownerRefs).To(HaveLen(1))
+
+				ref := ownerRefs[0].(map[string]interface{})
+				g.Expect(ref["kind"]).To(Equal("DevPod"))
+				g.Expect(ref["name"]).To(Equal(devpodName))
+				g.Expect(ref["controller"]).To(BeTrue())
+			}
+			Eventually(verifySecret, 3*time.Minute, 2*time.Second).Should(Succeed())
+
+			By("patching the Secret with a valid password to unblock reconciliation")
+			encoded := base64.StdEncoding.EncodeToString([]byte("testpassword123"))
+			patch := fmt.Sprintf(`{"data":{"testuser-password":"%s"}}`, encoded)
+			cmd := exec.Command("kubectl", "patch", "secret", devpodName,
+				"-n", testNS, "-p", patch, "--type=merge")
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to patch Secret with password")
+		})
+
+		It("should create a ServiceAccount", func() {
+			verifySA := func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "serviceaccount", devpodName,
+					"-n", testNS, "-o", "jsonpath={.metadata.labels.app\\.kubernetes\\.io/instance}")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred(), "ServiceAccount not found")
+				g.Expect(output).To(Equal(devpodName))
+			}
+			Eventually(verifySA, 3*time.Minute, 2*time.Second).Should(Succeed())
+		})
+
+		It("should create a NodePort Service with correct ports", func() {
+			verifyService := func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "service", devpodName,
+					"-n", testNS, "-o", "json")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred(), "Service not found")
+
+				var svc map[string]interface{}
+				g.Expect(json.Unmarshal([]byte(output), &svc)).To(Succeed())
+
+				spec := svc["spec"].(map[string]interface{})
+				g.Expect(spec["type"]).To(Equal("NodePort"))
+
+				ports := spec["ports"].([]interface{})
+				found := false
+				for _, p := range ports {
+					port := p.(map[string]interface{})
+					if int(port["port"].(float64)) == 22 {
+						g.Expect(int(port["nodePort"].(float64))).To(Equal(30122))
+						found = true
+					}
+				}
+				g.Expect(found).To(BeTrue(), "SSH port mapping not found")
+			}
+			Eventually(verifyService, 3*time.Minute, 2*time.Second).Should(Succeed())
+		})
+
+		It("should create a StatefulSet with correct spec", func() {
+			verifySTS := func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "statefulset", devpodName,
+					"-n", testNS, "-o", "json")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred(), "StatefulSet not found")
+
+				var sts map[string]interface{}
+				g.Expect(json.Unmarshal([]byte(output), &sts)).To(Succeed())
+
+				spec := sts["spec"].(map[string]interface{})
+				g.Expect(int(spec["replicas"].(float64))).To(Equal(1))
+
+				template := spec["template"].(map[string]interface{})
+				podSpec := template["spec"].(map[string]interface{})
+				g.Expect(podSpec["serviceAccountName"]).To(Equal(devpodName))
+
+				containers := podSpec["containers"].([]interface{})
+				g.Expect(containers).NotTo(BeEmpty())
+				mainContainer := containers[0].(map[string]interface{})
+				g.Expect(mainContainer["image"]).To(Equal("docker.io/tcfwbper/dev-env:1.0.0"))
+
+				vcts := spec["volumeClaimTemplates"].([]interface{})
+				g.Expect(vcts).NotTo(BeEmpty())
+			}
+			Eventually(verifySTS, 3*time.Minute, 2*time.Second).Should(Succeed())
+		})
+	})
+
+	Context("DevPod CRUD lifecycle", Ordered, func() {
+		const (
+			lifecycleNS = "devpod-e2e-lifecycle"
+		)
+
+		BeforeAll(func() {
+			By("creating lifecycle test namespace")
+			cmd := exec.Command("kubectl", "create", "ns", lifecycleNS)
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("labeling namespace to allow privileged pods")
+			cmd = exec.Command("kubectl", "label", "--overwrite", "ns", lifecycleNS,
+				"pod-security.kubernetes.io/enforce=privileged")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterAll(func() {
+			By("deleting lifecycle test namespace")
+			cmd := exec.Command("kubectl", "delete", "ns", lifecycleNS, "--ignore-not-found=true")
+			_, _ = utils.Run(cmd)
+		})
+
+		It("should update Service when DevPod spec changes", func() {
+			const devpodName = "e2e-update-test"
+
+			By("creating a DevPod CR")
+			cr := fmt.Sprintf(`apiVersion: apps.devpod.com/v1
+kind: DevPod
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  auth:
+    username: updateuser
+  persistence:
+    storageClass: standard
+    size: 1Gi
+    reclaimPolicy: Delete
+  nodePorts:
+    - src: 22
+      dest: 30222
+  docker:
+    enabled: false`, devpodName, lifecycleNS)
+
+			tmpFile, err := os.CreateTemp("", "devpod-update-*.yaml")
+			Expect(err).NotTo(HaveOccurred())
+			defer os.Remove(tmpFile.Name())
+			_, err = tmpFile.WriteString(cr)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tmpFile.Close()).To(Succeed())
+
+			cmd := exec.Command("kubectl", "apply", "-f", tmpFile.Name())
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("patching the Secret with a valid password")
+			waitForSecretAndPatch(devpodName, lifecycleNS, "updateuser")
+
+			By("waiting for the Service to exist")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "service", devpodName, "-n", lifecycleNS)
+				_, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+			}, 3*time.Minute, 2*time.Second).Should(Succeed())
+
+			By("adding a new nodePort to the DevPod")
+			patch := `{"spec":{"nodePorts":[{"src":22,"dest":30222},{"src":8080,"dest":30280}]}}`
+			cmd = exec.Command("kubectl", "patch", "devpod", devpodName,
+				"-n", lifecycleNS, "-p", patch, "--type=merge")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to patch DevPod with new nodePort")
+
+			By("verifying the Service gains the new port")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "service", devpodName,
+					"-n", lifecycleNS, "-o", "json")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+
+				var svc map[string]interface{}
+				g.Expect(json.Unmarshal([]byte(output), &svc)).To(Succeed())
+
+				spec := svc["spec"].(map[string]interface{})
+				ports := spec["ports"].([]interface{})
+				var foundPorts []int
+				for _, p := range ports {
+					port := p.(map[string]interface{})
+					foundPorts = append(foundPorts, int(port["nodePort"].(float64)))
+				}
+				g.Expect(foundPorts).To(ContainElement(30280), "New nodePort 30280 not found")
+			}, 3*time.Minute, 2*time.Second).Should(Succeed())
+
+			By("cleaning up the update-test DevPod")
+			cmd = exec.Command("kubectl", "delete", "devpod", devpodName,
+				"-n", lifecycleNS, "--timeout=60s")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should delete PVCs when reclaimPolicy is Delete", func() {
+			const devpodName = "e2e-delete-pvc"
+
+			By("creating a DevPod CR with reclaimPolicy: Delete")
+			cr := fmt.Sprintf(`apiVersion: apps.devpod.com/v1
+kind: DevPod
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  auth:
+    username: deluser
+  persistence:
+    storageClass: standard
+    size: 1Gi
+    reclaimPolicy: Delete
+  nodePorts:
+    - src: 22
+      dest: 30322
+  docker:
+    enabled: false`, devpodName, lifecycleNS)
+
+			tmpFile, err := os.CreateTemp("", "devpod-delete-*.yaml")
+			Expect(err).NotTo(HaveOccurred())
+			defer os.Remove(tmpFile.Name())
+			_, err = tmpFile.WriteString(cr)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tmpFile.Close()).To(Succeed())
+
+			cmd := exec.Command("kubectl", "apply", "-f", tmpFile.Name())
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("patching the Secret with a valid password")
+			waitForSecretAndPatch(devpodName, lifecycleNS, "deluser")
+
+			By("waiting for PVCs to be created")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "pvc",
+					"-l", fmt.Sprintf("app.kubernetes.io/instance=%s", devpodName),
+					"-n", lifecycleNS, "-o", "jsonpath={.items[*].metadata.name}")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(strings.TrimSpace(output)).NotTo(BeEmpty(), "PVCs not yet created")
+			}, 3*time.Minute, 2*time.Second).Should(Succeed())
+
+			By("deleting the DevPod CR")
+			cmd = exec.Command("kubectl", "delete", "devpod", devpodName,
+				"-n", lifecycleNS, "--timeout=60s")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("verifying the DevPod is gone")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "devpod", devpodName,
+					"-n", lifecycleNS, "--ignore-not-found=true")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(strings.TrimSpace(output)).To(BeEmpty())
+			}, 3*time.Minute, 2*time.Second).Should(Succeed())
+
+			By("verifying PVCs are deleted")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "pvc",
+					"-l", fmt.Sprintf("app.kubernetes.io/instance=%s", devpodName),
+					"-n", lifecycleNS, "-o", "jsonpath={.items[*].metadata.name}")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(strings.TrimSpace(output)).To(BeEmpty(), "PVCs should be deleted")
+			}, 3*time.Minute, 2*time.Second).Should(Succeed())
+		})
+
+		It("should retain PVCs when reclaimPolicy is Retain", func() {
+			const devpodName = "e2e-retain-pvc"
+
+			By("creating a DevPod CR with reclaimPolicy: Retain")
+			cr := fmt.Sprintf(`apiVersion: apps.devpod.com/v1
+kind: DevPod
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  auth:
+    username: retainuser
+  persistence:
+    storageClass: standard
+    size: 1Gi
+    reclaimPolicy: Retain
+  nodePorts:
+    - src: 22
+      dest: 30422
+  docker:
+    enabled: false`, devpodName, lifecycleNS)
+
+			tmpFile, err := os.CreateTemp("", "devpod-retain-*.yaml")
+			Expect(err).NotTo(HaveOccurred())
+			defer os.Remove(tmpFile.Name())
+			_, err = tmpFile.WriteString(cr)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tmpFile.Close()).To(Succeed())
+
+			cmd := exec.Command("kubectl", "apply", "-f", tmpFile.Name())
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("patching the Secret with a valid password")
+			waitForSecretAndPatch(devpodName, lifecycleNS, "retainuser")
+
+			By("waiting for PVCs to be created")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "pvc",
+					"-l", fmt.Sprintf("app.kubernetes.io/instance=%s", devpodName),
+					"-n", lifecycleNS, "-o", "jsonpath={.items[*].metadata.name}")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(strings.TrimSpace(output)).NotTo(BeEmpty(), "PVCs not yet created")
+			}, 3*time.Minute, 2*time.Second).Should(Succeed())
+
+			By("deleting the DevPod CR")
+			cmd = exec.Command("kubectl", "delete", "devpod", devpodName,
+				"-n", lifecycleNS, "--timeout=60s")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("verifying the DevPod is gone")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "devpod", devpodName,
+					"-n", lifecycleNS, "--ignore-not-found=true")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(strings.TrimSpace(output)).To(BeEmpty())
+			}, 3*time.Minute, 2*time.Second).Should(Succeed())
+
+			By("verifying PVCs are retained")
+			cmd = exec.Command("kubectl", "get", "pvc",
+				"-l", fmt.Sprintf("app.kubernetes.io/instance=%s", devpodName),
+				"-n", lifecycleNS, "-o", "jsonpath={.items[*].metadata.name}")
+			output, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(strings.TrimSpace(output)).NotTo(BeEmpty(), "PVCs should be retained")
+
+			By("manually cleaning up retained PVCs")
+			cmd = exec.Command("kubectl", "delete", "pvc",
+				"-l", fmt.Sprintf("app.kubernetes.io/instance=%s", devpodName),
+				"-n", lifecycleNS)
+			_, _ = utils.Run(cmd)
+		})
 	})
 })
+
+func waitForSecretAndPatch(name, ns, username string) {
+	Eventually(func(g Gomega) {
+		cmd := exec.Command("kubectl", "get", "secret", name, "-n", ns)
+		_, err := utils.Run(cmd)
+		g.Expect(err).NotTo(HaveOccurred())
+	}, 3*time.Minute, 2*time.Second).Should(Succeed())
+
+	encoded := base64.StdEncoding.EncodeToString([]byte("testpassword123"))
+	patch := fmt.Sprintf(`{"data":{"%s-password":"%s"}}`, username, encoded)
+	cmd := exec.Command("kubectl", "patch", "secret", name,
+		"-n", ns, "-p", patch, "--type=merge")
+	_, err := utils.Run(cmd)
+	Expect(err).NotTo(HaveOccurred(), "Failed to patch Secret with password")
+}
 
 // serviceAccountToken returns a token for the specified service account in the given namespace.
 // It uses the Kubernetes TokenRequest API to generate a token by directly sending a request
